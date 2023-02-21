@@ -52,6 +52,12 @@ namespace Lab2
                 { "cin", "key word" },
                 { "new", "key word" },
                 { "endl", "key word" },
+                { "#include", "key word" },
+                { "<iostream>", "library" },
+                { "<string>", "library" },
+                { "using", "key word" },
+                { "namespace", "key word" },
+                { "std", "namespace" },
             };
 
             var currentKeyWords = new Dictionary<string, string>();
@@ -81,16 +87,17 @@ namespace Lab2
             var tokens = new List<string>();
 
             var word = "";
-            var read = false;
+            var readSpace = false;
+            var isError = false;
 
             foreach (var symbol in codeText)
             {
-                if ((symbol != ' ' || read) && symbol != '\n' && symbol != '\t' && symbol != '\r'
+                if ((symbol != ' ' || readSpace) && symbol != '\n' && symbol != '\t' && symbol != '\r'
                     && !keySymbols.ContainsKey($"{symbol}") && !operations.ContainsKey($"{symbol}"))
                 {
                     if (symbol == '\"')
                     {
-                        read = !read;
+                        readSpace = !readSpace;
                     }
 
                     word += symbol;
@@ -107,11 +114,9 @@ namespace Lab2
 
                         tokens.Add($"{word} key word");
 
-                        word = "";
-                        continue;
+                        word = string.Empty;
                     }
-
-                    if (variablesTypes.Contains(word))
+                    else if (variablesTypes.Contains(word))
                     {
                         if (!currentKeyWords.ContainsKey(word))
                         {
@@ -120,88 +125,138 @@ namespace Lab2
 
                         tokens.Add($"{word} variable type");
 
-                        word = "";
+                        word = string.Empty;
                     }
-
-                    if (symbol == '(')
+                    else if (Regex.IsMatch(word, @"^[a-z][a-z0-9_]*$", RegexOptions.IgnoreCase))
                     {
-                        if (variablesTypes.Contains(tokens[^1].Split()[0]))
+                        if (!variables.ContainsKey(word) && !currentKeyWords.ContainsKey(word))
                         {
-                            if (Regex.IsMatch(word, @"^[a-z][a-z0-9_]*$", RegexOptions.IgnoreCase))
+                            if (variablesTypes.Contains(tokens[^1].Split()[0]))
                             {
-                                if (!currentKeyWords.ContainsKey(word))
-                                {
-                                    currentKeyWords.Add(word, "function");
-                                }
-
-                                tokens.Add($"{word} function");
-
-                                word = "";
+                                variables.Add(word, tokens[^1].Split()[0]);
+                                tokens.Add($"{word} {tokens[^1].Split()[0]}");
                             }
-                            else if (word == "")
+                            else
                             {
-                                var temp = tokens[^1].Split()[0];
-
-                                variables.Remove(temp);
-
-                                if (!currentKeyWords.ContainsKey(temp))
-                                {
-                                    currentKeyWords.Add(temp, "function");
-                                }
-
-                                tokens.RemoveAt(tokens.Count - 1);
-
-                                tokens.Add($"{temp} function");
+                                Console.WriteLine($"{path}: Неизвестный идентификатор: {word}");
+                                isError = true;
+                                break;
                             }
-                        }
-                        else if (tokens[^1].Split()[0] == ";")
-                        {
-                            if (currentKeyWords.ContainsKey(word))
-                            {
-                                tokens.Add($"{word} {currentKeyWords[word]}");
-
-                                word = "";
-                            }
-                        }
-
-                        tokens.Add($"{symbol} key symbol");
-
-                        continue;
-                    }
-
-                    if (Regex.IsMatch(word, @"^[a-z][a-z0-9_]*$", RegexOptions.IgnoreCase))
-                    {
-                        if (!variables.ContainsKey(word))
-                        {
-                            variables.Add(word, tokens[^1].Split()[0]);
-                            tokens.Add($"{word} {tokens[^1].Split()[0]}");
                         }
                         else
                         {
-                            tokens.Add($"{word} {variables[word]}");
+                            if (variables.ContainsKey(word))
+                            {
+                                tokens.Add($"{word} {variables[word]}");
+                            }
+                            else
+                            {
+                                tokens.Add($"{word} {currentKeyWords[word]}");
+                            }
                         }
 
-                        word = "";
+                        word = string.Empty;
                     }
-
-                    if (word.StartsWith("\"") && word.EndsWith("\"") && word.Length > 1)
+                    else if (word.StartsWith("\"") && word.EndsWith("\"") && word.Length > 1)
                     {
                         tokens.Add($"{word} string literal");
 
-                        word = "";
+                        word = string.Empty;
                     }
-
-                    if (int.TryParse(word, out var val1))
+                    else if (int.TryParse(word, out var val1))
                     {
                         tokens.Add($"{word} int literal");
 
-                        word = "";
+                        word = string.Empty;
                     }
                     else if (double.TryParse(word, out var val2))
                     {
                         tokens.Add($"{word} double literal");
 
-                        word = "";
+                        word = string.Empty;
+                    }
+                    else if (word != string.Empty)
+                    {
+                        if (variablesTypes.Contains(tokens[^1].Split()[0]))
+                        {
+                            Console.WriteLine($"{path}: Ожидается имя идентификатора: {word}");
+                            isError = true;
+                            break;
+                        }
+                        else if (tokens[^1].Split()[0] == "{" || tokens[^1].Split()[0] == "}" || tokens[^1].Split()[0] == "(")
+                        {
+                            Console.WriteLine($"{path}: Ожидается ключевое слово или идентификатор: {word}");
+                            isError = true;
+                            break;
+                        }
+                        else if (tokens[^1].Split()[0] == ")")
+                        {
+                            Console.WriteLine($"{path}: Ожидается '}}' или ';': {word}");
+                            isError = true;
+                            break;
+                        }
+                        else if (tokens[^1].Split()[0] == "[")
+                        {
+                            Console.WriteLine($"{path}: Ожидается идентификатор или литерал int: {word}");
+                            isError = true;
+                            break;
+                        }
+                        else if (tokens[^1].Split()[0] == "]")
+                        {
+                            Console.WriteLine($"{path}: Ожидается '+', '-' или ';': {word}");
+                            isError = true;
+                            break;
+                        }
+                        else if ((tokens[^1].Split()[0].StartsWith("<") && tokens[^1].Split()[0].EndsWith(">")) || tokens[^1].Split()[0] == ";")
+                        {
+                            Console.WriteLine($"{path}: Ожидается ключевое слово: {word}");
+                            isError = true;
+                            break;
+                        }
+                        else if (variables.ContainsKey(tokens[^1].Split()[0]))
+                        {
+                            Console.WriteLine($"{path}: Ожидается ?: {word}");
+                            isError = true;
+                            break;
+                        }
+                    }
+
+                    if (symbol == '(')
+                    {
+                        if (variablesTypes.Contains(tokens[^1].Split()[1]))
+                        {
+                            var temp = tokens[^1].Split()[0];
+
+                            variables.Remove(temp);
+
+                            if (!currentKeyWords.ContainsKey(temp))
+                            {
+                                currentKeyWords.Add(temp, "function");
+                            }
+
+                            tokens.RemoveAt(tokens.Count - 1);
+
+                            tokens.Add($"{temp} function");
+                        }
+                    }
+
+                    if ((symbol == '<' || symbol == '>') && tokens[^1].Split()[0] == "#include")
+                    {
+                        word += symbol;
+
+                        if (word.StartsWith('<') && word.EndsWith('>') && word.Length >= 3)
+                        {
+                            if (!currentKeyWords.ContainsKey(word))
+                            {
+                                currentKeyWords.Add(word, "library");
+                            }
+
+                            tokens.Add(word);
+
+                            word = string.Empty;
+                        }
+
+                        continue;
                     }
 
                     if (keySymbols.ContainsKey($"{symbol}"))
@@ -216,25 +271,28 @@ namespace Lab2
                 }
             }
 
-            Console.WriteLine("Variables:");
-
-            foreach (var elem in variables)
+            if (!isError)
             {
-                Console.WriteLine($"\t{elem.Key}: {elem.Value}");
-            }
+                Console.WriteLine("Variables:");
 
-            Console.WriteLine("\nKey words:");
+                foreach (var elem in variables)
+                {
+                    Console.WriteLine($"\t{elem.Key}: {elem.Value}");
+                }
 
-            foreach (var elem in currentKeyWords)
-            {
-                Console.WriteLine($"\t{elem.Key}: {elem.Value}");
-            }
+                Console.WriteLine("\nKey words:");
 
-            Console.WriteLine("\nTokens:");
+                foreach (var elem in currentKeyWords)
+                {
+                    Console.WriteLine($"\t{elem.Key}: {elem.Value}");
+                }
 
-            foreach (var elem in tokens)
-            {
-                Console.WriteLine($"\t{elem}");
+                Console.WriteLine("\nTokens:");
+
+                foreach (var elem in tokens)
+                {
+                    Console.WriteLine($"\t{elem}");
+                }
             }
         }
     }
