@@ -5,16 +5,6 @@ namespace Lab2
 {
     internal class Program
     {
-        enum CodeContext
-        {
-            Default,
-            Definition,
-            Calling,
-            Condition,
-            Cycle,
-            Switch
-        }
-
         static void Main(string[] args)
         {
             var path = "Program1.cpp";
@@ -23,31 +13,28 @@ namespace Lab2
             string codeText = reader.ReadToEnd();
             reader.Close();
 
-            var variablesTypes = new List<string> { "int", "double", "char", "string", "string*", "void" };
+            var variablesTypes = new List<string> { "int", "double", "char", "string", "void", "bool" };
             var variables = new Dictionary<string, string>();
+            var literals = new Dictionary<string, string>();
 
             var keyWords = new Dictionary<string, string>
             {
+                { "do", "key word" },
                 { "while", "key word" },
                 { "for", "key word" },
                 { "if", "key word" },
-                { "switch", "key word" },
-                { "do", "key word" },
                 { "else", "key word" },
-                { "continue", "key word" },
-                { "break", "key word" },
+                { "switch", "key word" },
                 { "case", "key word" },
                 { "default", "key word" },
+                { "break", "key word" },
+                { "continue", "key word" },
                 { "cout", "key word" },
                 { "cin", "key word" },
                 { "new", "key word" },
                 { "endl", "key word" },
-                { "#include", "key word" },
-                { "<iostream>", "library" },
-                { "<string>", "library" },
-                { "using", "key word" },
-                { "namespace", "key word" },
-                { "std", "namespace" },
+                { "true", "key word" },
+                { "false", "key word" },
             };
 
             var currentKeyWords = new Dictionary<string, string>();
@@ -61,8 +48,11 @@ namespace Lab2
                 { "[", "key symbol" },
                 { "]", "key symbol" },
                 { ",", "key symbol" },
+                { ":", "key symbol" },
                 { ";", "key symbol" },
             };
+
+            var currentKeySymbols = new Dictionary<string, string>();
 
             var operations = new Dictionary<string, string>
             {
@@ -72,14 +62,19 @@ namespace Lab2
                 { ">", "operation" },
                 { "+", "operation" },
                 { "-", "operation" },
+                { "*", "operation" },
+                { "/", "operation" },
+                { "?", "operation" },
             };
+
+            var currentOperations = new Dictionary<string, string>();
 
             var tokens = new List<string>();
 
             var word = "";
             var readSpace = false;
+            var isCharReading = false;
             var isError = false;
-            var context = CodeContext.Default;
             
             foreach (var symbol in codeText)
             {
@@ -91,10 +86,29 @@ namespace Lab2
                         readSpace = !readSpace;
                     }
 
+                    if (symbol == '\'' && !readSpace)
+                    {
+                        isCharReading = !isCharReading;
+                    }
+
                     word += symbol;
                 }
                 else
                 {
+                    if (readSpace && word.Contains('\n'))
+                    {
+                        Console.WriteLine($"{path}: Константа string не имеет закрывающего символа: {word}");
+                        isError = true;
+                        break;
+                    }
+
+                    /*if (isCharReading && word.Length > 3)
+                    {
+                        Console.WriteLine($"{path}: Константа char неверно задана: {word}");
+                        isError = true;
+                        break;
+                    }*/
+
                     if (keyWords.ContainsKey(word))
                     {
                         if (!currentKeyWords.ContainsKey(word))
@@ -105,23 +119,6 @@ namespace Lab2
                         tokens.Add($"{word} key word");
 
                         word = string.Empty;
-
-                        if (word == "if" || word == "while")
-                        {
-                            context = CodeContext.Condition;
-                        }
-                        else if (word == "switch")
-                        {
-                            context = CodeContext.Switch;
-                        }
-                        else if (word == "for")
-                        {
-                            context = CodeContext.Cycle;
-                        }
-                        else
-                        {
-                            context = CodeContext.Default;
-                        }
                     }
                     else if (variablesTypes.Contains(word))
                     {
@@ -133,10 +130,8 @@ namespace Lab2
                         tokens.Add($"{word} variable type");
 
                         word = string.Empty;
-
-                        context = CodeContext.Default;
                     }
-                    else if (Regex.IsMatch(word, @"^[a-z][a-z0-9_]*$", RegexOptions.IgnoreCase))
+                    else if (Regex.IsMatch(word, @"^[a-z_][a-z0-9_]*$", RegexOptions.IgnoreCase))
                     {
                         if (!variables.ContainsKey(word) && !currentKeyWords.ContainsKey(word))
                         {
@@ -144,8 +139,6 @@ namespace Lab2
                             {
                                 variables.Add(word, tokens[^1].Split()[0]);
                                 tokens.Add($"{word} {tokens[^1].Split()[0]}");
-
-                                context = CodeContext.Default;
                             }
                             else
                             {
@@ -159,14 +152,10 @@ namespace Lab2
                             if (variables.ContainsKey(word))
                             {
                                 tokens.Add($"{word} {variables[word]}");
-
-                                context = CodeContext.Default;
                             }
                             else
                             {
                                 tokens.Add($"{word} {currentKeyWords[word]}");
-
-                                context = CodeContext.Calling;
                             }
                         }
 
@@ -174,27 +163,57 @@ namespace Lab2
                     }
                     else if (word.StartsWith("\"") && word.EndsWith("\"") && word.Length >= 2)
                     {
+                        if (!literals.ContainsKey(word))
+                        {
+                            literals.Add(word, "string literal");
+                        }
+
                         tokens.Add($"{word} string literal");
 
                         word = string.Empty;
+                    }
+                    else if (word.StartsWith("\'") && word.EndsWith("\'") && word.Length >= 3)
+                    {
+                        if (word.Length == 3 || (word[1] == '\\' && (word[2] == 'r' || word[2] == 'n' || word[2] == 't'
+                            || word[2] == 'v' || word[2] == '\"' || word[2] == '\'' || word[2] == '\\' || word[2] == '0')))
+                        {
+                            if (!literals.ContainsKey(word))
+                            {
+                                literals.Add(word, "char literal");
+                            }
+                            
+                            tokens.Add($"{word} char literal");
 
-                        context = CodeContext.Default;
+                            word = string.Empty;
+                        }
+                        else
+                        {
+                            Console.WriteLine($"{path}: Константа char неверно задана: {word}");
+                            isError = true;
+                            break;
+                        }
                     }
                     else if (int.TryParse(word, out var val1))
                     {
+                        if (!literals.ContainsKey(word))
+                        {
+                            literals.Add(word, "int literal");
+                        }
+
                         tokens.Add($"{word} int literal");
-
+                        
                         word = string.Empty;
-
-                        context = CodeContext.Default;
                     }
                     else if (double.TryParse(word, out var val2))
                     {
+                        if (!literals.ContainsKey(word))
+                        {
+                            literals.Add(word, "double literal");
+                        }
+
                         tokens.Add($"{word} double literal");
 
                         word = string.Empty;
-
-                        context = CodeContext.Default;
                     }
                     else if (word != string.Empty)
                     {
@@ -204,65 +223,14 @@ namespace Lab2
                             isError = true;
                             break;
                         }
-                        else if (variables.ContainsKey(tokens[^1].Split()[0]))
+                        else
                         {
-                            if (context == CodeContext.Definition)
+                            if (!readSpace && !isCharReading)
                             {
-                                Console.WriteLine($"{path}: Ожидается ',': {word}");
+                                Console.WriteLine($"{path}: Неизвестный идентификатор: {word}");
+                                isError = true;
+                                break;
                             }
-                            
-                            if (context == CodeContext.Calling)
-                            {
-                                Console.WriteLine($"{path}: Ожидается ',' или выражение, которое возвращает значение: {word}");
-                            }
-
-                            if (context == CodeContext.Condition || context == CodeContext.Cycle)
-                            {
-                                Console.WriteLine($"{path}: Ожидается операция: {word}");
-                            }
-
-                            if (context == CodeContext.Switch)
-                            {
-                                Console.WriteLine($"{path}: Ожидается ')': {word}");
-                            }
-
-                            if (context == CodeContext.Default)
-                            {
-                                Console.WriteLine($"{path}: Ожидается ';' или операция: {word}");
-                            }
-
-                            isError = true;
-                            break;
-                        }
-                        else if (tokens[^1].Split()[0] == "{" || tokens[^1].Split()[0] == "}" || tokens[^1].Split()[0] == "(")
-                        {
-                            Console.WriteLine($"{path}: Ожидается ключевое слово или идентификатор: {word}");
-                            isError = true;
-                            break;
-                        }
-                        else if (tokens[^1].Split()[0] == ")")
-                        {
-                            Console.WriteLine($"{path}: Ожидается '}}' или ';': {word}");
-                            isError = true;
-                            break;
-                        }
-                        else if (tokens[^1].Split()[0] == "[")
-                        {
-                            Console.WriteLine($"{path}: Ожидается идентификатор или литерал int: {word}");
-                            isError = true;
-                            break;
-                        }
-                        else if (tokens[^1].Split()[0] == "]")
-                        {
-                            Console.WriteLine($"{path}: Ожидается '+', '-' или ';': {word}");
-                            isError = true;
-                            break;
-                        }
-                        else if ((tokens[^1].Split()[0].StartsWith("<") && tokens[^1].Split()[0].EndsWith(">")) || tokens[^1].Split()[0] == ";")
-                        {
-                            Console.WriteLine($"{path}: Ожидается ключевое слово: {word}");
-                            isError = true;
-                            break;
                         }
                     }
 
@@ -282,38 +250,83 @@ namespace Lab2
                             tokens.RemoveAt(tokens.Count - 1);
 
                             tokens.Add($"{temp} function");
-
-                            context = CodeContext.Definition;
                         }
                     }
 
-                    if ((symbol == '<' || symbol == '>') && tokens[^1].Split()[0] == "#include")
+                    if (symbol == '*')
                     {
-                        word += symbol;
-
-                        if (word.StartsWith('<') && word.EndsWith('>') && word.Length >= 3)
+                        if (variablesTypes.Contains(tokens[^1].Split()[0]))
                         {
-                            if (!currentKeyWords.ContainsKey(word))
+                            var temp = tokens[^1].Split()[0];
+
+                            if (!variablesTypes.Contains($"{temp}*"))
                             {
-                                currentKeyWords.Add(word, "library");
+                                variablesTypes.Add($"{temp}*");
                             }
 
-                            tokens.Add(word);
+                            if (!currentKeyWords.ContainsKey($"{temp}*"))
+                            {
+                                currentKeyWords.Add($"{temp}*", "variable type");
+                            }
 
-                            word = string.Empty;
+                            tokens.RemoveAt(tokens.Count - 1);
+
+                            tokens.Add($"{temp}* variable type");
                         }
 
                         continue;
                     }
 
-                    if (keySymbols.ContainsKey($"{symbol}"))
+                    if (!readSpace && !isCharReading)
                     {
-                        tokens.Add($"{symbol} key symbol");
-                    }
+                        if (keySymbols.ContainsKey($"{symbol}"))
+                        {
+                            if (!currentKeySymbols.ContainsKey($"{symbol}"))
+                            {
+                                currentKeySymbols.Add($"{symbol}", "function");
+                            }
 
-                    if (operations.ContainsKey($"{symbol}"))
+                            tokens.Add($"{symbol} key symbol");
+                        }
+
+                        if (operations.ContainsKey($"{symbol}"))
+                        {
+                            if ((symbol == '+' || symbol == '-' || symbol == '<' || symbol == '>' || symbol == '=')
+                                && $"{symbol}" == tokens[^1].Split()[0])
+                            {
+                                if (!currentOperations.ContainsKey($"{symbol}{symbol}"))
+                                {
+                                    currentOperations.Add($"{symbol}{symbol}", "operation");
+                                }
+
+                                tokens.RemoveAt(tokens.Count - 1);
+                                tokens.Add($"{symbol}{symbol} operation");
+                            }
+                            else if (symbol == '=' && (tokens[^1].Split()[0] == "+" || tokens[^1].Split()[0] == "-"
+                                || tokens[^1].Split()[0] == "*" || tokens[^1].Split()[0] == "/" || tokens[^1].Split()[0] == "!"))
+                            {
+                                if (!currentOperations.ContainsKey($"{tokens[^1].Split()[0]}{symbol}"))
+                                {
+                                    currentOperations.Add($"{tokens[^1].Split()[0]}{symbol}", "operation");
+                                }
+
+                                tokens.RemoveAt(tokens.Count - 1);
+                                tokens.Add($"{tokens[^1].Split()[0]}{symbol} operation");
+                            }
+                            else
+                            {
+                                if (!currentOperations.ContainsKey($"{symbol}"))
+                                {
+                                    currentOperations.Add($"{symbol}", "function");
+                                }
+
+                                tokens.Add($"{symbol} operation");
+                            }
+                        }
+                    }
+                    else
                     {
-                        tokens.Add($"{symbol} operation");
+                        word += symbol;
                     }
                 }
             }
@@ -327,9 +340,30 @@ namespace Lab2
                     Console.WriteLine($"\t{elem.Key}: {elem.Value}");
                 }
 
+                Console.WriteLine("\nLiterals:");
+
+                foreach (var elem in literals)
+                {
+                    Console.WriteLine($"\t{elem.Key}: {elem.Value}");
+                }
+
                 Console.WriteLine("\nKey words:");
 
                 foreach (var elem in currentKeyWords)
+                {
+                    Console.WriteLine($"\t{elem.Key}: {elem.Value}");
+                }
+
+                Console.WriteLine("\nKey symbols:");
+
+                foreach (var elem in currentKeySymbols)
+                {
+                    Console.WriteLine($"\t{elem.Key}: {elem.Value}");
+                }
+
+                Console.WriteLine("\nOperations:");
+
+                foreach (var elem in currentOperations)
                 {
                     Console.WriteLine($"\t{elem.Key}: {elem.Value}");
                 }
