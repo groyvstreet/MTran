@@ -5,6 +5,16 @@ namespace Lab2
 {
     internal class Program
     {
+        enum CodeContext
+        {
+            Default,
+            Definition,
+            Calling,
+            Condition,
+            Cycle,
+            Switch
+        }
+
         static void Main(string[] args)
         {
             var path = "Program1.cpp";
@@ -16,38 +26,18 @@ namespace Lab2
             var variablesTypes = new List<string> { "int", "double", "char", "string", "string*", "void" };
             var variables = new Dictionary<string, string>();
 
-            var keyWords1 = new Dictionary<string, string>
+            var keyWords = new Dictionary<string, string>
             {
                 { "while", "key word" },
                 { "for", "key word" },
                 { "if", "key word" },
                 { "switch", "key word" },
-            };
-
-            var keyWords2 = new Dictionary<string, string>
-            {
                 { "do", "key word" },
                 { "else", "key word" },
-            };
-
-            var keyWords3 = new Dictionary<string, string>
-            {
                 { "continue", "key word" },
                 { "break", "key word" },
-            };
-
-            var keyWords4 = new Dictionary<string, string>
-            {
                 { "case", "key word" },
-            };
-
-            var keyWords5 = new Dictionary<string, string>
-            {
                 { "default", "key word" },
-            };
-
-            var keyWords6 = new Dictionary<string, string>
-            {
                 { "cout", "key word" },
                 { "cin", "key word" },
                 { "new", "key word" },
@@ -89,7 +79,8 @@ namespace Lab2
             var word = "";
             var readSpace = false;
             var isError = false;
-
+            var context = CodeContext.Default;
+            
             foreach (var symbol in codeText)
             {
                 if ((symbol != ' ' || readSpace) && symbol != '\n' && symbol != '\t' && symbol != '\r'
@@ -104,8 +95,7 @@ namespace Lab2
                 }
                 else
                 {
-                    if (keyWords1.ContainsKey(word) || keyWords2.ContainsKey(word) || keyWords3.ContainsKey(word)
-                         || keyWords4.ContainsKey(word) || keyWords5.ContainsKey(word) || keyWords6.ContainsKey(word))
+                    if (keyWords.ContainsKey(word))
                     {
                         if (!currentKeyWords.ContainsKey(word))
                         {
@@ -115,6 +105,23 @@ namespace Lab2
                         tokens.Add($"{word} key word");
 
                         word = string.Empty;
+
+                        if (word == "if" || word == "while")
+                        {
+                            context = CodeContext.Condition;
+                        }
+                        else if (word == "switch")
+                        {
+                            context = CodeContext.Switch;
+                        }
+                        else if (word == "for")
+                        {
+                            context = CodeContext.Cycle;
+                        }
+                        else
+                        {
+                            context = CodeContext.Default;
+                        }
                     }
                     else if (variablesTypes.Contains(word))
                     {
@@ -126,6 +133,8 @@ namespace Lab2
                         tokens.Add($"{word} variable type");
 
                         word = string.Empty;
+
+                        context = CodeContext.Default;
                     }
                     else if (Regex.IsMatch(word, @"^[a-z][a-z0-9_]*$", RegexOptions.IgnoreCase))
                     {
@@ -135,6 +144,8 @@ namespace Lab2
                             {
                                 variables.Add(word, tokens[^1].Split()[0]);
                                 tokens.Add($"{word} {tokens[^1].Split()[0]}");
+
+                                context = CodeContext.Default;
                             }
                             else
                             {
@@ -148,38 +159,78 @@ namespace Lab2
                             if (variables.ContainsKey(word))
                             {
                                 tokens.Add($"{word} {variables[word]}");
+
+                                context = CodeContext.Default;
                             }
                             else
                             {
                                 tokens.Add($"{word} {currentKeyWords[word]}");
+
+                                context = CodeContext.Calling;
                             }
                         }
 
                         word = string.Empty;
                     }
-                    else if (word.StartsWith("\"") && word.EndsWith("\"") && word.Length > 1)
+                    else if (word.StartsWith("\"") && word.EndsWith("\"") && word.Length >= 2)
                     {
                         tokens.Add($"{word} string literal");
 
                         word = string.Empty;
+
+                        context = CodeContext.Default;
                     }
                     else if (int.TryParse(word, out var val1))
                     {
                         tokens.Add($"{word} int literal");
 
                         word = string.Empty;
+
+                        context = CodeContext.Default;
                     }
                     else if (double.TryParse(word, out var val2))
                     {
                         tokens.Add($"{word} double literal");
 
                         word = string.Empty;
+
+                        context = CodeContext.Default;
                     }
                     else if (word != string.Empty)
                     {
                         if (variablesTypes.Contains(tokens[^1].Split()[0]))
                         {
                             Console.WriteLine($"{path}: Ожидается имя идентификатора: {word}");
+                            isError = true;
+                            break;
+                        }
+                        else if (variables.ContainsKey(tokens[^1].Split()[0]))
+                        {
+                            if (context == CodeContext.Definition)
+                            {
+                                Console.WriteLine($"{path}: Ожидается ',': {word}");
+                            }
+                            
+                            if (context == CodeContext.Calling)
+                            {
+                                Console.WriteLine($"{path}: Ожидается ',' или выражение, которое возвращает значение: {word}");
+                            }
+
+                            if (context == CodeContext.Condition || context == CodeContext.Cycle)
+                            {
+                                Console.WriteLine($"{path}: Ожидается операция: {word}");
+                            }
+
+                            if (context == CodeContext.Switch)
+                            {
+                                Console.WriteLine($"{path}: Ожидается ')': {word}");
+                            }
+
+                            if (context == CodeContext.Default)
+                            {
+                                Console.WriteLine($"{path}: Ожидается ';' или операция: {word}");
+                            }
+
                             isError = true;
                             break;
                         }
@@ -213,12 +264,6 @@ namespace Lab2
                             isError = true;
                             break;
                         }
-                        else if (variables.ContainsKey(tokens[^1].Split()[0]))
-                        {
-                            Console.WriteLine($"{path}: Ожидается ?: {word}");
-                            isError = true;
-                            break;
-                        }
                     }
 
                     if (symbol == '(')
@@ -237,6 +282,8 @@ namespace Lab2
                             tokens.RemoveAt(tokens.Count - 1);
 
                             tokens.Add($"{temp} function");
+
+                            context = CodeContext.Definition;
                         }
                     }
 
