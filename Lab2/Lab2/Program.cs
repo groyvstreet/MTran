@@ -78,15 +78,15 @@ namespace Lab2
             
             foreach (var symbol in codeText)
             {
-                if ((symbol != ' ' || readSpace) && symbol != '\n' && symbol != '\t' && symbol != '\r'
+               if ((symbol != ' ' || readSpace) && symbol != '\n' && symbol != '\t' && symbol != '\r'
                     && !keySymbols.ContainsKey($"{symbol}") && !operations.ContainsKey($"{symbol}"))
                 {
-                    if (symbol == '\"')
+                    if (symbol == '\"' && !isCharReading)
                     {
                         readSpace = !readSpace;
                     }
 
-                    if (symbol == '\'' && !readSpace)
+                    if (symbol == '\'' && !readSpace && (word == string.Empty || word[^1] != '\\'))
                     {
                         isCharReading = !isCharReading;
                     }
@@ -102,12 +102,12 @@ namespace Lab2
                         break;
                     }
 
-                    /*if (isCharReading && word.Length > 3)
+                    if (isCharReading && word.Length > 3)
                     {
-                        Console.WriteLine($"{path}: Константа char неверно задана: {word}");
+                        Console.WriteLine($"{path}: Константа char не имеет закрывающего символа: {word}");
                         isError = true;
                         break;
-                    }*/
+                    }
 
                     if (keyWords.ContainsKey(word))
                     {
@@ -172,19 +172,29 @@ namespace Lab2
 
                         word = string.Empty;
                     }
-                    else if (word.StartsWith("\'") && word.EndsWith("\'") && word.Length >= 3)
+                    else if (word.StartsWith("\'") && word.EndsWith("\'") && word.Length >= 2)
                     {
-                        if (word.Length == 3 || (word[1] == '\\' && (word[2] == 'r' || word[2] == 'n' || word[2] == 't'
-                            || word[2] == 'v' || word[2] == '\"' || word[2] == '\'' || word[2] == '\\' || word[2] == '0')))
+                        if (word.Length >= 3)
                         {
-                            if (!literals.ContainsKey(word))
+                            if ((word.Length == 3 && word[1] != '\\') || (word.Length == 4 && word[1] == '\\' &&
+                                (word[2] == 'r' || word[2] == 'n' || word[2] == 't' || word[2] == 'v' || word[2] == '\"'
+                                || word[2] == '\'' || word[2] == '\\' || word[2] == '0')))
                             {
-                                literals.Add(word, "char literal");
-                            }
-                            
-                            tokens.Add($"{word} char literal");
+                                if (!literals.ContainsKey(word))
+                                {
+                                    literals.Add(word, "char literal");
+                                }
 
-                            word = string.Empty;
+                                tokens.Add($"{word} char literal");
+
+                                word = string.Empty;
+                            }
+                            else
+                            {
+                                Console.WriteLine($"{path}: Константа char неверно задана: {word}");
+                                isError = true;
+                                break;
+                            }
                         }
                         else
                         {
@@ -235,7 +245,7 @@ namespace Lab2
                     }
 
                     if (symbol == '(')
-                    {
+                     {
                         if (variablesTypes.Contains(tokens[^1].Split()[1]))
                         {
                             var temp = tokens[^1].Split()[0];
