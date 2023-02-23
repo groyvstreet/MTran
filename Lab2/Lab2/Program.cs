@@ -5,6 +5,45 @@ namespace Lab2
 {
     internal class Program
     {
+        static string IsVariable(List<string> tokens, List<string> variablesTypes)
+        {
+            for (var i = 1; i <= tokens.Count; i++)
+            {
+                if (tokens[^i].Split()[0] != "," && !variablesTypes.Contains(tokens[^i].Split()[1]))
+                {
+                    if (variablesTypes.Contains(tokens[^i].Split()[0]))
+                    {
+                        return tokens[^i].Split()[0];
+                    }
+                    else
+                    {
+                        return string.Empty;
+                    }
+                }
+            }
+
+            return string.Empty;
+        }
+
+        static int IsVariableExists(List<Dictionary<string, string>> variablesTables, string word)
+        {
+            for (var i = 1; i <= variablesTables.Count; i++)
+            {
+                if (variablesTables[^i].ContainsKey(word))
+                {
+                    return variablesTables.Count - i;
+                }
+            }
+
+            return -1;
+        }
+
+        class Level
+        {
+            public Dictionary<string, string> Variables { get; set; } = new();
+            public List<Level> Levels { get; set; } = new();
+        }
+
         static void Main(string[] args)
         {
             var path = "Program1.cpp";
@@ -14,7 +53,7 @@ namespace Lab2
             reader.Close();
 
             var variablesTypes = new List<string> { "int", "double", "char", "string", "void", "bool" };
-            var variables = new Dictionary<string, string>();
+            var variablesTables = new List<Dictionary<string, string>> { new Dictionary<string, string>() };
             var literals = new Dictionary<string, string>();
 
             var keyWords = new Dictionary<string, string>
@@ -75,6 +114,7 @@ namespace Lab2
             var readSpace = false;
             var isCharReading = false;
             var isError = false;
+            var table = 0;
             
             foreach (var symbol in codeText)
             {
@@ -133,12 +173,14 @@ namespace Lab2
                     }
                     else if (Regex.IsMatch(word, @"^[a-z_][a-z0-9_]*$", RegexOptions.IgnoreCase))
                     {
-                        if (!variables.ContainsKey(word) && !currentKeyWords.ContainsKey(word))
+                        if (IsVariableExists(variablesTables, word) == -1 && !currentKeyWords.ContainsKey(word))
                         {
-                            if (variablesTypes.Contains(tokens[^1].Split()[0]))
+                            var type = IsVariable(tokens, variablesTypes);
+
+                            if (type != string.Empty)
                             {
-                                variables.Add(word, tokens[^1].Split()[0]);
-                                tokens.Add($"{word} {tokens[^1].Split()[0]}");
+                                variablesTables[table].Add(word, type);
+                                tokens.Add($"{word} {type}");
                             }
                             else
                             {
@@ -149,9 +191,11 @@ namespace Lab2
                         }
                         else
                         {
-                            if (variables.ContainsKey(word))
+                            var index = IsVariableExists(variablesTables, word);
+
+                            if (index != -1)
                             {
-                                tokens.Add($"{word} {variables[word]}");
+                                tokens.Add($"{word} {variablesTables[index][word]}");
                             }
                             else
                             {
@@ -244,47 +288,61 @@ namespace Lab2
                         }
                     }
 
-                    if (symbol == '(')
-                     {
-                        if (variablesTypes.Contains(tokens[^1].Split()[1]))
-                        {
-                            var temp = tokens[^1].Split()[0];
-
-                            variables.Remove(temp);
-
-                            if (!currentKeyWords.ContainsKey(temp))
-                            {
-                                currentKeyWords.Add(temp, "function");
-                            }
-
-                            tokens.RemoveAt(tokens.Count - 1);
-
-                            tokens.Add($"{temp} function");
-                        }
-                    }
-
-                    if (symbol == '*')
+                    if (!readSpace && !isCharReading)
                     {
-                        if (variablesTypes.Contains(tokens[^1].Split()[0]))
+                        if (symbol == '(')
                         {
-                            var temp = tokens[^1].Split()[0];
-
-                            if (!variablesTypes.Contains($"{temp}*"))
+                            if (variablesTypes.Contains(tokens[^1].Split()[1]))
                             {
-                                variablesTypes.Add($"{temp}*");
+                                var temp = tokens[^1].Split()[0];
+
+                                variablesTables[table].Remove(temp);
+
+                                if (!currentKeyWords.ContainsKey(temp))
+                                {
+                                    currentKeyWords.Add(temp, "function");
+                                }
+
+                                tokens.RemoveAt(tokens.Count - 1);
+
+                                tokens.Add($"{temp} function");
                             }
-
-                            if (!currentKeyWords.ContainsKey($"{temp}*"))
-                            {
-                                currentKeyWords.Add($"{temp}*", "variable type");
-                            }
-
-                            tokens.RemoveAt(tokens.Count - 1);
-
-                            tokens.Add($"{temp}* variable type");
                         }
 
-                        continue;
+                        if (symbol == '*')
+                        {
+                            if (variablesTypes.Contains(tokens[^1].Split()[0]))
+                            {
+                                var temp = tokens[^1].Split()[0];
+
+                                if (!variablesTypes.Contains($"{temp}*"))
+                                {
+                                    variablesTypes.Add($"{temp}*");
+                                }
+
+                                if (!currentKeyWords.ContainsKey($"{temp}*"))
+                                {
+                                    currentKeyWords.Add($"{temp}*", "variable type");
+                                }
+
+                                tokens.RemoveAt(tokens.Count - 1);
+
+                                tokens.Add($"{temp}* variable type");
+                            }
+
+                            continue;
+                        }
+
+                        if (symbol == '{')
+                        {
+                            table++;
+                            variablesTables.Add(new Dictionary<string, string>());
+                        }
+
+                        if (symbol == '}')
+                        {
+                            table--;
+                        }
                     }
 
                     if (!readSpace && !isCharReading)
@@ -345,9 +403,16 @@ namespace Lab2
             {
                 Console.WriteLine("Variables:");
 
-                foreach (var elem in variables)
+                for (var i = 0; i < variablesTables.Count; i++)
                 {
-                    Console.WriteLine($"\t{elem.Key}: {elem.Value}");
+                    Console.WriteLine($"\t{i}");
+
+                    foreach (var elem in variablesTables[i])
+                    {
+                        Console.WriteLine($"\t\t{elem.Key}: {elem.Value}");
+                    }
+
+                    Console.WriteLine();
                 }
 
                 Console.WriteLine("\nLiterals:");
