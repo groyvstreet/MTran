@@ -28,7 +28,7 @@ namespace Lab2
             return string.Empty;
         }
 
-        static string IsVariableExists(Dictionary<string, Dictionary<string, string>> variablesTables, string word, string environment)
+        static string IsVariableExists(Dictionary<string, Dictionary<string, string>> variablesTables, string word, string environment, bool skip = false)
         {
             while (environment != "-1")
             {
@@ -36,7 +36,7 @@ namespace Lab2
                 {
                     return environment;
                 }
-                else
+                else if (!skip)
                 {
                     environment = environment.Remove(environment.Length - 2);
 
@@ -49,6 +49,10 @@ namespace Lab2
                     {
                         environment += $":{temp[i]}";
                     }
+                }
+                else
+                {
+                    break;
                 }
             }
 
@@ -198,7 +202,7 @@ namespace Lab2
                     }
                     else if (Regex.IsMatch(word, @"^[a-z_][a-z0-9_]*$", RegexOptions.IgnoreCase))
                     {
-                        if (IsVariableExists(variablesTables, word, environment) == string.Empty && !currentKeyWords.ContainsKey(word))
+                        if (IsVariableExists(variablesTables, word, environment, true) == string.Empty && !currentKeyWords.ContainsKey(word))
                         {
                             var type = IsVariable(tokens, variablesTypes);
 
@@ -209,9 +213,18 @@ namespace Lab2
                             }
                             else
                             {
-                                Console.WriteLine($"{path} ({row}, {col - word.Length}): Неизвестный идентификатор: {word}\n{info}");
-                                isError = true;
-                                break;
+                                var temp = IsVariableExists(variablesTables, word, environment);
+
+                                if (temp != string.Empty)
+                                {
+                                    tokens.Add($"{word} {variablesTables[temp][word]}");
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"{path} ({row}, {col - word.Length}): Неизвестный идентификатор: {word}\n{info}");
+                                    isError = true;
+                                    break;
+                                }
                             }
                         }
                         else
@@ -283,7 +296,7 @@ namespace Lab2
                         
                         word = string.Empty;
                     }
-                    else if (double.TryParse(word, out var val2))
+                    else if (double.TryParse(word.Replace('.', ','), out var val2))
                     {
                         if (!literals.ContainsKey(word))
                         {
