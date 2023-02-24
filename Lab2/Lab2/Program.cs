@@ -1,8 +1,4 @@
-﻿using System.IO;
-using System.Linq.Expressions;
-using System.Reflection.Emit;
-using System.Text.RegularExpressions;
-using System.Xml.Linq;
+﻿using System.Text.RegularExpressions;
 
 namespace Lab2
 {
@@ -61,7 +57,7 @@ namespace Lab2
 
         static void Main(string[] args)
         {
-            var path = "Program1.cpp";
+            var path = "Program2.cpp";
             
             using var reader = new StreamReader(path!);
             string codeText = reader.ReadToEnd();
@@ -182,7 +178,7 @@ namespace Lab2
                     {
                         if (!currentKeyWords.ContainsKey(word))
                         {
-                            currentKeyWords.Add(word, "key word");
+                            currentKeyWords.Add(word, keyWords[word]);
                         }
 
                         tokens.Add($"{word} key word");
