@@ -225,15 +225,26 @@ namespace Lab2
                         }
                         else
                         {
-                            var temp = IsVariableExists(variablesTables, word, environment);
+                            var type = IsVariable(tokens, variablesTypes);
 
-                            if (temp != string.Empty)
+                            if (type == string.Empty)
                             {
-                                tokens.Add($"{word} {variablesTables[temp][word]}");
+                                var temp = IsVariableExists(variablesTables, word, environment);
+
+                                if (temp != string.Empty)
+                                {
+                                    tokens.Add($"{word} {variablesTables[temp][word]}");
+                                }
+                                else
+                                {
+                                    tokens.Add($"{word} {currentKeyWords[word]}");
+                                }
                             }
                             else
                             {
-                                tokens.Add($"{word} {currentKeyWords[word]}");
+                                Console.WriteLine($"{path} ({row}, {col - word.Length}): Переменная уже определена в текущей области: {word}\n{info}");
+                                isError = true;
+                                break;
                             }
                         }
 
@@ -362,9 +373,9 @@ namespace Lab2
                                 tokens.RemoveAt(tokens.Count - 1);
 
                                 tokens.Add($"{temp}* variable type");
-                            }
 
-                            continue;
+                                continue;
+                            }
                         }
 
                         if (symbol == '<' || symbol == '>')
@@ -433,6 +444,17 @@ namespace Lab2
                             {
                                 if (!currentOperations.ContainsKey($"{symbol}{symbol}"))
                                 {
+                                    var temp = int.Parse(currentOperations[$"{symbol}"].Split()[^1]);
+                                    currentOperations[$"{symbol}"] = currentOperations[$"{symbol}"].Replace($"{temp}", $"{--temp}");
+
+                                    foreach (var elem in currentOperations)
+                                    {
+                                        if (elem.Value.Split()[^1] == "0")
+                                        {
+                                            currentOperations.Remove($"{symbol}");
+                                        }
+                                    }
+
                                     currentOperations.Add($"{symbol}{symbol}", "operation");
                                 }
                                 else
@@ -457,6 +479,17 @@ namespace Lab2
                             {
                                 if (!currentOperations.ContainsKey($"{tokens[^1].Split()[0]}{symbol}"))
                                 {
+                                    var temp = int.Parse(currentOperations[$"{tokens[^1].Split()[0]}"].Split()[^1]);
+                                    currentOperations[$"{tokens[^1].Split()[0]}"] = currentOperations[$"{tokens[^1].Split()[0]}"].Replace($"{temp}", $"{--temp}");
+
+                                    foreach (var elem in currentOperations)
+                                    {
+                                        if (elem.Value.Split()[^1] == "0")
+                                        {
+                                            currentOperations.Remove($"{tokens[^1].Split()[0]}");
+                                        }
+                                    }
+
                                     currentOperations.Add($"{tokens[^1].Split()[0]}{symbol}", "operation");
                                 }
                                 else
@@ -473,8 +506,8 @@ namespace Lab2
                                     }
                                 }
 
-                                tokens.RemoveAt(tokens.Count - 1);
                                 tokens.Add($"{tokens[^1].Split()[0]}{symbol} operation");
+                                tokens.RemoveAt(tokens.Count - 2);
                             }
                             else
                             {
