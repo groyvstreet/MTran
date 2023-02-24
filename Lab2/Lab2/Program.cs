@@ -57,7 +57,7 @@ namespace Lab2
 
         static void Main(string[] args)
         {
-            var path = "Program2.cpp";
+            var path = "Program1.cpp";
             
             using var reader = new StreamReader(path!);
             string codeText = reader.ReadToEnd();
@@ -140,10 +140,12 @@ namespace Lab2
             var row = 1;
             var col = 1;
             var info = "";
-            
+            var isBlock = false;
+            var blockEnvironment = "0:0";
+
             foreach (var symbol in codeText)
             {
-               if ((symbol != ' ' || readSpace) && symbol != '\n' && symbol != '\t' && symbol != '\r'
+                if ((symbol != ' ' || readSpace) && symbol != '\n' && symbol != '\t' && symbol != '\r'
                     && !keySymbols.ContainsKey($"{symbol}") && !operations.ContainsKey($"{symbol}"))
                 {
                     if (symbol == '\"' && !isCharReading)
@@ -182,6 +184,29 @@ namespace Lab2
                         }
 
                         tokens.Add($"{word} key word");
+
+                        if (word == "for")
+                        {
+                            isBlock = true;
+                            blockEnvironment = $"{environment}";
+
+                            level++;
+                            name++;
+
+                            var temp = environment.Split(':');
+                            temp[0] = level.ToString();
+                            environment = string.Empty;
+                            environment += temp[0];
+
+                            for (var i = 1; i < temp.Length; i++)
+                            {
+                                environment += $":{temp[i]}";
+                            }
+
+                            environment += $":{name}";
+
+                            variablesTables.Add(environment, new Dictionary<string, string>());
+                        }
 
                         word = string.Empty;
                     }
@@ -351,6 +376,26 @@ namespace Lab2
                                 tokens.RemoveAt(tokens.Count - 1);
 
                                 tokens.Add($"{temp} function");
+
+                                isBlock = true;
+                                blockEnvironment = $"{environment}";
+
+                                level++;
+                                name++;
+
+                                var temp2 = environment.Split(':');
+                                temp2[0] = level.ToString();
+                                environment = string.Empty;
+                                environment += temp2[0];
+
+                                for (var i = 1; i < temp2.Length; i++)
+                                {
+                                    environment += $":{temp2[i]}";
+                                }
+
+                                environment += $":{name}";
+
+                                variablesTables.Add(environment, new Dictionary<string, string>());
                             }
                         }
 
@@ -388,7 +433,7 @@ namespace Lab2
                             }
                         }
 
-                        if (symbol == '{')
+                        if (symbol == '{' && !isBlock)
                         {
                             level++;
                             name++;
@@ -406,6 +451,10 @@ namespace Lab2
                             environment += $":{name}";
 
                             variablesTables.Add(environment, new Dictionary<string, string>());
+                        }
+                        else if (symbol == '{')
+                        {
+                            isBlock = false;
                         }
 
                         if (symbol == '}')
