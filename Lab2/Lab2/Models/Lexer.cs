@@ -2,7 +2,7 @@
 
 namespace Lab2.Models
 {
-    internal class Lexer
+    public class Lexer
     {
         public string Path { get; set; }
         public string Code { get; set; }
@@ -223,7 +223,7 @@ namespace Lab2.Models
                             CurrentKeyWords.Add(word, "variable type");
                         }
 
-                        Tokens.Add(new Token(word, "vaariable type"));
+                        Tokens.Add(new Token(word, "variable type"));
 
                         word = string.Empty;
                     }

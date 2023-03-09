@@ -1,6 +1,6 @@
 ﻿namespace Lab2.Models
 {
-    internal class Token
+    public class Token
     {
         public string Identifier { get; set; }
         public string Type { get; set; }
