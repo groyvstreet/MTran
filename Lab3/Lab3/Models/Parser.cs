@@ -1,4 +1,5 @@
 ﻿using Lab2.Models;
+using System.Reflection.Metadata.Ecma335;
 
 namespace Lab3.Models
 {
@@ -95,7 +96,19 @@ namespace Lab3.Models
 
             if (variable != null)
             {
-                return new VariableNode(variable);
+                var leftNode = new VariableNode(variable) as ExpressionNode;
+                var @operator = Match(new List<string> { "[" });
+
+                while (@operator != null)
+                {
+                    @operator.Identifier = "[]";
+                    var rightNode = ParseFormula();
+                    leftNode = new BinaryOperationNode(@operator, leftNode, rightNode);
+                    Require(new List<string> { "]" });
+                    @operator = Match(new List<string> { "[" });
+                }
+
+                return leftNode;
             }
 
             throw new Exception($"Ожидается переменная или литерал на {Position} позиции");
@@ -130,6 +143,12 @@ namespace Lab3.Models
                     leftNode = new BinaryOperationNode(@operator, leftNode, rightNode);
                     Require(new List<string> { "]" });
                     @operator = Match(Lexer.Operations.Keys.ToList());
+                }
+                else if (@operator.Identifier == "++" || @operator.Identifier == "--")
+                {
+                    leftNode = new UnaryOperationNode(@operator, leftNode);
+                    @operator = Match(Lexer.Operations.Keys.ToList());
+                    @operator ??= Match(new List<string> { "[" });
                 }
                 else
                 {
@@ -192,6 +211,15 @@ namespace Lab3.Models
 
             while(@operator != null)
             {
+                if (Match(new List<string> { "endl" }) != null)
+                {
+                    Position--;
+                    var temp = new KeyWordNode(Match(new List<string> { "endl" })!);
+                    parameters.Add(temp);
+                    @operator = Match(new List<string> { "<<" });
+                    continue;
+                }
+
                 var parameter = ParseFormula();
                 parameters.Add(parameter);
                 @operator = Match(new List<string> { "<<" });
@@ -208,9 +236,27 @@ namespace Lab3.Models
 
             while (@operator != null)
             {
-                var parameter = ParseVariable();
+                var parameter = ParseFormula();
                 parameters.Add(parameter);
                 @operator = Match(new List<string> { ">>" });
+            }
+
+            return parameters;
+        }
+
+        public List<ExpressionNode> ParseFunctionParameters()
+        {
+            var parameters = new List<ExpressionNode>();
+
+            var parameter = ParseFormula();
+            parameters.Add(parameter);
+            var @operator = Match(new List<string> { "," });
+
+            while (@operator != null)
+            {
+                parameter = ParseFormula();
+                parameters.Add(parameter);
+                @operator = Match(new List<string> { "," });
             }
 
             return parameters;
@@ -241,12 +287,14 @@ namespace Lab3.Models
                     }
                 }
             }
-
+            
             if (Match(GetVariables()) != null)
             {
                 Position--;
                 var variableNode = ParseVariableOrLiteral();
-                var @operator = Match(Lexer.CurrentOperations.Keys.ToList());
+                var list = Lexer.CurrentOperations.Keys.ToList();
+                list.Add("[");
+                var @operator = Match(list);
 
                 if (@operator != null)
                 {
@@ -255,6 +303,15 @@ namespace Lab3.Models
                         var unaryNode = new UnaryOperationNode(@operator, variableNode);
                         Require(new List<string> { ";" });
                         return unaryNode;
+                    }
+
+                    if (@operator.Identifier == "[")
+                    {
+                        @operator.Identifier = "[]";
+                        var rightNode = ParseFormula();
+                        variableNode = new BinaryOperationNode(@operator, variableNode, rightNode);
+                        Require(new List<string> { "]" });
+                        @operator = Match(Lexer.Operations.Keys.ToList());
                     }
 
                     if (Match(new List<string> { "new" }) != null)
@@ -313,6 +370,35 @@ namespace Lab3.Models
                         var cin_parameters = ParseCin();
                         Require(new List<string> { ";" });
                         return new CinNode(cin_parameters);
+                    case "for":
+                        Require(new List<string> { "(" });
+                        Match(Lexer.VariablesTypes);
+                        var first = ParseFormula();
+                        Require(new List<string> { ";" });
+                        var second = ParseFormula();
+                        Require(new List<string> { ";" });
+                        var third = ParseFormula();
+                        Require(new List<string> { ")" });
+                        Require(new List<string> { "{" });
+                        var forBody = ParseCode();
+                        Position--;
+                        Require(new List<string> { "}" });
+                        return new ForNode(first, second, third, forBody);
+                    case "if":
+                        Require(new List<string> { "(" });
+                        var ifCondition = ParseFormula();
+                        Require(new List<string> { ")" });
+                        Require(new List<string> { "{" });
+                        var ifBody = ParseCode();
+                        Position--;
+                        Require(new List<string> { "}" });
+                        return new IfNode(ifCondition, ifBody);
+                    default:
+                        Require(new List<string> { "(" });
+                        var functionParameters = ParseFunctionParameters();
+                        Require(new List<string> { ")" });
+                        Require(new List<string> { ";" });
+                        return new FunctionExecutionNode(token, functionParameters);
                 }
             }
 

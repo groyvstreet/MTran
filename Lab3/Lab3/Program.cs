@@ -49,6 +49,14 @@ namespace Lab3
                 PrintNode(whileNode.Body, level + 1);
             }
 
+            if (expressionNode is IfNode ifNode)
+            {
+                PrintTab(level);
+                Console.WriteLine("if");
+                PrintNode(ifNode.Condition, level + 1);
+                PrintNode(ifNode.Body, level + 1);
+            }
+
             if (expressionNode is CoutNode coutNode)
             {
                 PrintTab(level);
@@ -66,6 +74,28 @@ namespace Lab3
                 Console.WriteLine("cin");
 
                 foreach (var elem in cinNode.Parameters)
+                {
+                    PrintNode(elem, level + 1);
+                }
+            }
+
+            if (expressionNode is ForNode forNode)
+            {
+                PrintTab(level);
+                Console.WriteLine("for");
+
+                PrintNode(forNode.First, level + 1);
+                PrintNode(forNode.Second, level + 1);
+                PrintNode(forNode.Third, level + 1);
+                PrintNode(forNode.Body, level + 1);
+            }
+
+            if (expressionNode is FunctionExecutionNode functionExecutionNode)
+            {
+                PrintTab(level);
+                Console.WriteLine(functionExecutionNode.Function.Identifier);
+
+                foreach (var elem in functionExecutionNode.Parameters)
                 {
                     PrintNode(elem, level + 1);
                 }
