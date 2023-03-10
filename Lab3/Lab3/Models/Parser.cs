@@ -8,7 +8,6 @@ namespace Lab3.Models
         public Lexer Lexer { get; set; }
         public List<Token> Tokens { get; set; }
         public int Position { get; set; } = 0;
-        public string Scope { get; set; } = string.Empty;
         public bool IsSwitch { get; set; } = false;
 
         public Parser(Lexer lexer, List<Token> tokens)
@@ -39,7 +38,7 @@ namespace Lab3.Models
 
             if (token == null)
             {
-                throw new Exception($"На позиции {Position} ожидается '{tokenTypes[0]}'");
+                throw new Exception($"После токена '{Tokens[Position - 1].Identifier}' ожидается токен '{tokenTypes[0]}'");
             }
 
             return token;
@@ -69,19 +68,7 @@ namespace Lab3.Models
                 return new VariableTypeNode(type);
             }
 
-            throw new Exception($"Ожидается переменная на {Position} позиции");
-        }
-
-        ExpressionNode ParseVariable()
-        {
-            var variable = Match(GetVariables());
-
-            if (variable != null)
-            {
-                return new VariableNode(variable);
-            }
-
-            throw new Exception($"Ожидается переменная на {Position} позиции");
+            throw new Exception($"После токена '{Tokens[Position - 1].Identifier}' ожидается токен переменной");
         }
 
         ExpressionNode ParseVariableOrLiteral()
@@ -117,7 +104,7 @@ namespace Lab3.Models
                 return new LiteralNode(new Token(Tokens[Position++].Identifier, "bool literal"));
             }
 
-            throw new Exception($"Ожидается переменная или литерал на {Position} позиции");
+            throw new Exception($"После токена '{Tokens[Position - 1].Identifier}' ожидается токен переменной или литерала");
         }
 
         public ExpressionNode ParseParentheses()
@@ -156,10 +143,42 @@ namespace Lab3.Models
                     @operator = Match(Lexer.Operations.Keys.ToList());
                     @operator ??= Match(new List<string> { "[" });
                 }
+                else if (@operator.Identifier == "?")
+                {
+                    var ifBody = ParseFormula();
+                    Require(new List<string> { ":" });
+                    var elseBody = ParseFormula();
+                    leftNode = new IfNode(leftNode, ifBody, elseBody);
+                    @operator = Match(Lexer.Operations.Keys.ToList());
+                    @operator ??= Match(new List<string> { "[" });
+                }
+                else if (@operator.Identifier == "<<" || @operator.Identifier == ">>")
+                {
+                    Position--;
+                    break;
+                }
+                /*else if (@operator.Identifier == "==" || @operator.Identifier == "!=" || @operator.Identifier == "<"
+                    || @operator.Identifier == ">")
+                {
+                    var rightNode = ParseFormula();
+                    leftNode = new BinaryOperationNode(@operator, leftNode, rightNode);
+                    @operator = Match(Lexer.Operations.Keys.ToList());
+                    @operator ??= Match(new List<string> { "[" });
+                }*/
                 else
                 {
                     var rightNode = ParseParentheses();
-                    leftNode = new BinaryOperationNode(@operator, leftNode, rightNode);
+
+                    if (leftNode is BinaryOperationNode binary)
+                    {
+                        binary.RightNode = new BinaryOperationNode(@operator, binary.RightNode, rightNode);
+                        leftNode = binary;
+                    }
+                    else
+                    {
+                        leftNode = new BinaryOperationNode(@operator, leftNode, rightNode);
+                    }
+
                     @operator = Match(Lexer.Operations.Keys.ToList());
                     @operator ??= Match(new List<string> { "[" });
                 }
@@ -180,14 +199,14 @@ namespace Lab3.Models
                     return parameters;
                 }
 
-                throw new Exception("Ожидается тип переменной или ')'");
+                throw new Exception($"После токена '{Tokens[Position - 1].Identifier}' ожидается токен типа переменной или ')'");
             }
 
             var parameter = Match(GetVariables());
 
             if (parameter == null)
             {
-                throw new Exception("Ожидается имя переменной");
+                throw new Exception($"После токена '{Tokens[Position - 1].Identifier}' ожидается токен переменной");
             }
 
             parameters.Add(parameter);
@@ -198,11 +217,11 @@ namespace Lab3.Models
             {
                 if (Match(Lexer.VariablesTypes) == null)
                 {
-                    throw new Exception("Ожидается тип переменной");
+                    throw new Exception($"После токена '{Tokens[Position - 1].Identifier}' ожидается токен типа переменной");
                 }
 
                 parameter = Match(GetVariables());
-                parameters.Add(parameter);
+                parameters.Add(parameter!);
                 keySymbol = Match(new List<string> { "," });
             }
 
@@ -231,6 +250,11 @@ namespace Lab3.Models
                 @operator = Match(new List<string> { "<<" });
             }
 
+            if (parameters.Count == 0)
+            {
+                throw new Exception($"После токена '{Tokens[Position - 1].Identifier}' ожидается токен '<<'");
+            }
+
             return parameters;
         }
 
@@ -245,6 +269,11 @@ namespace Lab3.Models
                 var parameter = ParseFormula();
                 parameters.Add(parameter);
                 @operator = Match(new List<string> { ">>" });
+            }
+
+            if (parameters.Count == 0)
+            {
+                throw new Exception($"После токена '{Tokens[Position - 1].Identifier}' ожидается токен '>>'");
             }
 
             return parameters;
@@ -268,6 +297,37 @@ namespace Lab3.Models
             return parameters;
         }
 
+        public ExpressionNode ParseIfElse()
+        {
+            Require(new List<string> { "(" });
+            var ifCondition = ParseFormula();
+            Require(new List<string> { ")" });
+            Require(new List<string> { "{" });
+            var ifBody = ParseCode();
+            Position--;
+            Require(new List<string> { "}" });
+
+            ExpressionNode? elseBody = null;
+
+            if (Match(new List<string> { "else" }) != null)
+            {
+                if (Match(new List<string> { "if" }) != null)
+                {
+                    elseBody = ParseIfElse();
+                }
+                else
+                {
+                    Require(new List<string> { "{" });
+                    elseBody = ParseCode();
+                    Position--;
+                    Require(new List<string> { "}" });
+                    return new IfNode(ifCondition, ifBody, elseBody);
+                }
+            }
+
+            return new IfNode(ifCondition, ifBody, elseBody);
+        }
+
         public ExpressionNode? ParseExpression()
         {
             if (Match(Lexer.VariablesTypes) != null)
@@ -289,7 +349,7 @@ namespace Lab3.Models
                     }
                     else
                     {
-                        throw new Exception("Ожидается имя функции или переменной");
+                        throw new Exception($"После токена '{Tokens[Position - 1].Identifier}' ожидается токен переменной или функции");
                     }
                 }
 
@@ -306,7 +366,7 @@ namespace Lab3.Models
 
                         if (variableToken == null)
                         {
-                            throw new Exception("Ожидается имя переменной");
+                            throw new Exception($"После токена '{Tokens[Position - 1].Identifier}' ожидается токен переменной");
                         }
 
                         var rightNode = new VariableNode(variableToken);
@@ -318,6 +378,25 @@ namespace Lab3.Models
 
                     if (@operator != null)
                     {
+                        if (Match(new List<string> { "new" }) != null)
+                        {
+                            var type = Match(Lexer.VariablesTypes);
+
+                            if (type != null)
+                            {
+                                Position--;
+                                var typeNode = ParseVariableType();
+                                Require(new List<string> { "[" });
+                                var index = ParseFormula();
+                                Require(new List<string> { "]" });
+                                Require(new List<string> { ";" });
+                                var rightNode = new BinaryOperationNode(new Token("new", "key word"), typeNode, index);
+                                return new BinaryOperationNode(@operator, leftNode, rightNode);
+                            }
+
+                            throw new Exception($"После токена '{Tokens[Position - 1].Identifier}' ожидается токен типа переменной");
+                        }
+
                         var value = ParseFormula();
                         Require(new List<string> { ";" });
                         return new BinaryOperationNode(new Token("=", "operation"), leftNode, value);
@@ -371,7 +450,7 @@ namespace Lab3.Models
                             return new BinaryOperationNode(new Token("new", "key word"), typeNode, value);
                         }
 
-                        throw new Exception("Ожидается тип переменной");
+                        throw new Exception($"После токена '{Tokens[Position - 1].Identifier}' ожидается токен типа переменной");
                     }
 
                     var rightFormulaNode = ParseFormula();
@@ -385,7 +464,7 @@ namespace Lab3.Models
                     return null;
                 }
 
-                throw new Exception("После переменной ожидается оператор");
+                throw new Exception($"После токена '{Tokens[Position - 1].Identifier}' ожидается токен оператора");
             }
 
             if (Match(Lexer.CurrentKeyWords.Keys.ToList()) != null)
@@ -427,21 +506,14 @@ namespace Lab3.Models
                         Require(new List<string> { "}" });
                         return new ForNode(first, second, third, forBody);
                     case "if":
-                        Require(new List<string> { "(" });
-                        var ifCondition = ParseFormula();
-                        Require(new List<string> { ")" });
-                        Require(new List<string> { "{" });
-                        var ifBody = ParseCode();
-                        Position--;
-                        Require(new List<string> { "}" });
-                        return new IfNode(ifCondition, ifBody);
+                        return ParseIfElse();
                     case "switch":
                         Require(new List<string> { "(" });
                         var variable = Match(GetVariables());
 
                         if(variable == null)
                         {
-                            throw new Exception("Ожидается переменная");
+                            throw new Exception($"После токена '{Tokens[Position - 1].Identifier}' ожидается токен переменной");
                         }
 
                         Require(new List<string> { ")" });
@@ -449,23 +521,32 @@ namespace Lab3.Models
                         IsSwitch = true;
                         var switchBody = ParseCode();
                         IsSwitch = false;
+                        Position--;
                         Require(new List<string> { "}" });
-                        return new SwitchNode(new VariableNode(variable), switchBody);
+                        return new SwitchNode(variable, switchBody);
                     case "case":
                         if (IsSwitch)
                         {
-                            var literaNodel = ParseVariableOrLiteral();
+                            var literalNode = ParseVariableOrLiteral() as LiteralNode;
+
+                            if(literalNode == null)
+                            {
+                                throw new Exception($"После токена {Tokens[Position - 1].Identifier} ожидается токен литерала");
+                            }
+
                             Require(new List<string> { ":" });
-                            return new CaseNode(literaNodel);
+                            return new CaseNode(literalNode.Literal);
                         }
-                        throw new Exception("'case' вне конструкции 'switch'");
+
+                        throw new Exception("Неожидаемый токен: 'case' вне конструкции 'switch'");
                     case "default":
                         if (IsSwitch)
                         {
                             Require(new List<string> { ":" });
                             return new KeyWordNode(token);
                         }
-                        throw new Exception("'default' вне конструкции 'switch'");
+
+                        throw new Exception("Неожидаемый токен: 'default' вне конструкции 'switch'");
                     case "break":
                         Require(new List<string> { ";" });
                         return new KeyWordNode(token);

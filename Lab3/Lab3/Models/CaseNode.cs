@@ -9,11 +9,11 @@ namespace Lab3.Models
 {
     internal class CaseNode : ExpressionNode
     {
-        public ExpressionNode LiteralNode { get; set; }
+        public Token Literal { get; set; }
 
-        public CaseNode(ExpressionNode literalNode)
+        public CaseNode(Token literal)
         {
-            LiteralNode = literalNode;
+            Literal = literal;
         }
     }
 }

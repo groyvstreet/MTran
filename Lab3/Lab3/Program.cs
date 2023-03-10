@@ -14,13 +14,18 @@ namespace Lab3
             }
         }
 
-        static void PrintNode(ExpressionNode expressionNode, int level = 0)
+        static void PrintNode(ExpressionNode? expressionNode, int level = 0)
         {
+            if (expressionNode == null)
+            {
+                return;
+            }
+
             if (expressionNode is StatementsNode node)
             {
                 foreach (var elem in node.Nodes)
                 {
-                    PrintNode(elem, level + 1);
+                    PrintNode(elem, level);
                 }
             }
 
@@ -55,6 +60,7 @@ namespace Lab3
                 Console.WriteLine("if");
                 PrintNode(ifNode.Condition, level + 1);
                 PrintNode(ifNode.Body, level + 1);
+                PrintNode(ifNode.ElseBody, level + 1);
             }
 
             if (expressionNode is CoutNode coutNode)
@@ -101,6 +107,29 @@ namespace Lab3
                 }
             }
 
+            if (expressionNode is SwitchNode switchNode)
+            {
+                PrintTab(level);
+                Console.WriteLine("switch");
+                PrintTab(level);
+                Console.WriteLine(switchNode.Variable.Identifier);
+                PrintNode(switchNode.Body, level + 1);
+            }
+
+            if (expressionNode is CaseNode caseNode)
+            {
+                PrintTab(level);
+                Console.WriteLine("case");
+                PrintTab(level);
+                Console.WriteLine(caseNode.Literal.Identifier);
+            }
+
+            if (expressionNode is KeyWordNode keyWordNode)
+            {
+                PrintTab(level);
+                Console.WriteLine(keyWordNode.KeyWord.Identifier);
+            }
+
             if (expressionNode is BinaryOperationNode binaryOperationNode)
             {
                 PrintNode(binaryOperationNode.LeftNode, level + 1);
@@ -133,6 +162,8 @@ namespace Lab3
                 PrintTab(level);
                 Console.WriteLine(variableTypeNode.VariableType.Identifier);
             }
+
+            Console.WriteLine();
         }
 
         static void Main(string[] args)

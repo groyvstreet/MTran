@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Lab2.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,12 +9,12 @@ namespace Lab3.Models
 {
     internal class SwitchNode : ExpressionNode
     {
-        public ExpressionNode VariableNode { get; set; }
+        public Token Variable { get; set; }
         public ExpressionNode Body { get; set; }
 
-        public SwitchNode(ExpressionNode variableNode, ExpressionNode body)
+        public SwitchNode(Token variable, ExpressionNode body)
         {
-            VariableNode = variableNode;
+            Variable = variable;
             Body = body;
         }
     }
