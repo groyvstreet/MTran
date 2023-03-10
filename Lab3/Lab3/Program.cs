@@ -137,7 +137,7 @@ namespace Lab3
 
         static void Main(string[] args)
         {
-            var path = "Program1.cpp";
+            var path = "Program2.cpp";
 
             using var reader = new StreamReader(path!);
             string codeText = reader.ReadToEnd();

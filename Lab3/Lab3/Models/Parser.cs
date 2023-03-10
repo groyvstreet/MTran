@@ -9,6 +9,7 @@ namespace Lab3.Models
         public List<Token> Tokens { get; set; }
         public int Position { get; set; } = 0;
         public string Scope { get; set; } = string.Empty;
+        public bool IsSwitch { get; set; } = false;
 
         public Parser(Lexer lexer, List<Token> tokens)
         {
@@ -109,6 +110,11 @@ namespace Lab3.Models
                 }
 
                 return leftNode;
+            }
+
+            if (Tokens[Position].Identifier == "false" || Tokens[Position].Identifier == "true")
+            {
+                return new LiteralNode(new Token(Tokens[Position++].Identifier, "bool literal"));
             }
 
             throw new Exception($"Ожидается переменная или литерал на {Position} позиции");
@@ -286,6 +292,42 @@ namespace Lab3.Models
                         throw new Exception("Ожидается имя функции или переменной");
                     }
                 }
+
+                var variableToken = Match(GetVariables());
+
+                if (variableToken != null)
+                {
+                    var leftNode = new VariableNode(variableToken) as ExpressionNode;
+                    var @operator = Match(new List<string> { "," });
+
+                    while (@operator != null)
+                    {
+                        variableToken = Match(GetVariables());
+
+                        if (variableToken == null)
+                        {
+                            throw new Exception("Ожидается имя переменной");
+                        }
+
+                        var rightNode = new VariableNode(variableToken);
+                        leftNode = new BinaryOperationNode(new Token("=", "operation"), leftNode, rightNode);
+                        @operator = Match(new List<string> { "," });
+                    }
+
+                    @operator = Match(new List<string> { "=" });
+
+                    if (@operator != null)
+                    {
+                        var value = ParseFormula();
+                        Require(new List<string> { ";" });
+                        return new BinaryOperationNode(new Token("=", "operation"), leftNode, value);
+                    }
+                    else
+                    {
+                        Require(new List<string> { ";" });
+                        return null;
+                    }
+                }
             }
             
             if (Match(GetVariables()) != null)
@@ -393,6 +435,43 @@ namespace Lab3.Models
                         Position--;
                         Require(new List<string> { "}" });
                         return new IfNode(ifCondition, ifBody);
+                    case "switch":
+                        Require(new List<string> { "(" });
+                        var variable = Match(GetVariables());
+
+                        if(variable == null)
+                        {
+                            throw new Exception("Ожидается переменная");
+                        }
+
+                        Require(new List<string> { ")" });
+                        Require(new List<string> { "{" });
+                        IsSwitch = true;
+                        var switchBody = ParseCode();
+                        IsSwitch = false;
+                        Require(new List<string> { "}" });
+                        return new SwitchNode(new VariableNode(variable), switchBody);
+                    case "case":
+                        if (IsSwitch)
+                        {
+                            var literaNodel = ParseVariableOrLiteral();
+                            Require(new List<string> { ":" });
+                            return new CaseNode(literaNodel);
+                        }
+                        throw new Exception("'case' вне конструкции 'switch'");
+                    case "default":
+                        if (IsSwitch)
+                        {
+                            Require(new List<string> { ":" });
+                            return new KeyWordNode(token);
+                        }
+                        throw new Exception("'default' вне конструкции 'switch'");
+                    case "break":
+                        Require(new List<string> { ";" });
+                        return new KeyWordNode(token);
+                    case "continue":
+                        Require(new List<string> { ";" });
+                        return new KeyWordNode(token);
                     default:
                         Require(new List<string> { "(" });
                         var functionParameters = ParseFunctionParameters();
