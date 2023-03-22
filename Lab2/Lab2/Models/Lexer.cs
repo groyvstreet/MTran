@@ -422,7 +422,7 @@ namespace Lab2.Models
 
                                 Tokens.RemoveAt(Tokens.Count - 1);
 
-                                Tokens.Add(new Token(temp, "variable type"));
+                                Tokens.Add(new Token($"{temp}*", "variable type"));
 
                                 continue;
                             }

@@ -136,8 +136,12 @@ namespace Lab4.Models
 
                 if (returnType1 != returnType2)
                 {
-                    if (returnType1 == "string" || returnType1 == "bool" ||
-                        returnType2 == "string" || returnType2 == "bool")
+                    if ((returnType1 != "int" || returnType2 != "double") &&
+                        (returnType1 != "int" || returnType2 != "char") &&
+                        (returnType1 != "double" || returnType2 != "char") &&
+                        (returnType1 != "double" || returnType2 != "int") &&
+                        (returnType1 != "char" || returnType2 != "int") &&
+                        (returnType1 != "char" || returnType2 != "double"))
                     {
                         if (binaryOperationNode.Operator.Identifier != "new" && binaryOperationNode.Operator.Identifier != "[]")
                         {
@@ -202,11 +206,32 @@ namespace Lab4.Models
                     if ((binaryOperationNode.Operator.Identifier == "new" || binaryOperationNode.Operator.Identifier == "[]")
                         && returnType2 == "int")
                     {
-                        return GetReturnType(binaryOperationNode.LeftNode);
+                        if (binaryOperationNode.Operator.Identifier == "new")
+                        {
+                            return GetReturnType(binaryOperationNode.LeftNode) + "*";
+                        }
+
+                        var returnType3 = GetReturnType(binaryOperationNode.LeftNode);
+
+                        if (returnType3.EndsWith('*'))
+                        {
+                            return returnType3.Remove(returnType3.Length - 1);
+                        }
+
+                        if (returnType3 == "string")
+                        {
+                            return "char";
+                        }
+
+                        throw new Exception($"Невозможно выполнить операцию [] для {returnType3}");
                     }
 
-                    if (returnType1 == "string" || returnType1 == "bool" ||
-                        returnType2 == "string" || returnType2 == "bool")
+                    if ((returnType1 != "int" || returnType2 != "double") &&
+                        (returnType1 != "int" || returnType2 != "char") &&
+                        (returnType1 != "double" || returnType2 != "char") &&
+                        (returnType1 != "double" || returnType2 != "int") &&
+                        (returnType1 != "char" || returnType2 != "int") &&
+                        (returnType1 != "char" || returnType2 != "double"))
                     {
                         throw new Exception($"Невозможно выполнить операцию {binaryOperationNode.Operator.Identifier} для {returnType1} и {returnType2}");
                     }
@@ -235,6 +260,29 @@ namespace Lab4.Models
                         binaryOperationNode.Operator.Identifier == "<" || binaryOperationNode.Operator.Identifier == ">")
                 {
                     return "int";
+                }
+
+                if ((binaryOperationNode.Operator.Identifier == "new" || binaryOperationNode.Operator.Identifier == "[]")
+                        && returnType2 == "int")
+                {
+                    if (binaryOperationNode.Operator.Identifier == "new")
+                    {
+                        return GetReturnType(binaryOperationNode.LeftNode) + "*";
+                    }
+
+                    var returnType3 = GetReturnType(binaryOperationNode.LeftNode);
+
+                    if (returnType3.EndsWith('*'))
+                    {
+                        return returnType3.Remove(returnType3.Length - 1);
+                    }
+
+                    if (returnType3 == "string")
+                    {
+                        return "char";
+                    }
+
+                    throw new Exception($"Невозможно выполнить операцию [] для {returnType3}");
                 }
 
                 return returnType1;

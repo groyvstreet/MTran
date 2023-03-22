@@ -28,8 +28,6 @@ namespace Lab4
 
             var root = parser.ParseCode();
 
-            Lab3.Program.PrintNode(root);
-
             var semantic = new Semantic(root);
 
             semantic.CheckCode();
