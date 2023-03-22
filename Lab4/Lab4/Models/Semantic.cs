@@ -1,11 +1,5 @@
 ﻿using Lab2.Models;
 using Lab3.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Lab4.Models
 {
@@ -162,7 +156,82 @@ namespace Lab4.Models
 
         private string GetReturnType(ExpressionNode expressionNode)
         {
-            throw new NotImplementedException();
+            if (expressionNode is BinaryOperationNode binaryOperationNode)
+            {
+                var returnType1 = GetReturnType(binaryOperationNode.LeftNode);
+                var returnType2 = GetReturnType(binaryOperationNode.RightNode);
+
+                if (returnType1 != returnType2)
+                {
+                    if ((binaryOperationNode.Operator.Identifier == "new" || binaryOperationNode.Operator.Identifier == "[]")
+                        && returnType2 == "int")
+                    {
+                        return GetReturnType(binaryOperationNode.LeftNode);
+                    }
+
+                    if (returnType1 == "string" || returnType1 == "bool" ||
+                        returnType2 == "string" || returnType2 == "bool")
+                    {
+                        throw new Exception($"Невозможно выполнить операцию {binaryOperationNode.Operator.Identifier} для {returnType1} и {returnType2}");
+                    }
+
+                    if (binaryOperationNode.Operator.Identifier == "+" || binaryOperationNode.Operator.Identifier == "-" ||
+                        binaryOperationNode.Operator.Identifier == "*" || binaryOperationNode.Operator.Identifier == "/")
+                    {
+                        if (returnType1 == "double" || returnType2 == "double")
+                        {
+                            return "double";
+                        }
+
+                        return "int";
+                    }
+
+                    if (binaryOperationNode.Operator.Identifier == "==" || binaryOperationNode.Operator.Identifier == "!=" ||
+                        binaryOperationNode.Operator.Identifier == "<" || binaryOperationNode.Operator.Identifier == ">")
+                    {
+                        return "int";
+                    }
+
+                    return GetReturnType(binaryOperationNode.LeftNode);
+                }
+
+                if (binaryOperationNode.Operator.Identifier == "==" || binaryOperationNode.Operator.Identifier == "!=" ||
+                        binaryOperationNode.Operator.Identifier == "<" || binaryOperationNode.Operator.Identifier == ">")
+                {
+                    return "int";
+                }
+
+                return returnType1;
+            }
+
+            if (expressionNode is UnaryOperationNode unaryOperationNode)
+            {
+                var returnType = GetReturnType(unaryOperationNode.Operand);
+
+                if (returnType == "string" || returnType == "bool")
+                {
+                    throw new Exception($"Невозможно выполнить операцию {unaryOperationNode.Operator.Identifier} для {returnType}");
+                }
+
+                return returnType;
+            }
+
+            if (expressionNode is VariableNode variableNode)
+            {
+                return variableNode.Variable.Type;
+            }
+
+            if (expressionNode is LiteralNode literalNode)
+            {
+                return literalNode.Literal.Type.Split()[0];
+            }
+
+            if (expressionNode is VariableTypeNode variableTypeNode)
+            {
+                return variableTypeNode.VariableType.Identifier;
+            }
+
+            return "none";
         }
     }
 }

@@ -1,6 +1,6 @@
 ﻿using Lab2.Models;
 using Lab3.Models;
-using Lab3;
+using Lab4.Models;
 
 namespace Lab4
 {
@@ -29,6 +29,10 @@ namespace Lab4
             var root = parser.ParseCode();
 
             Lab3.Program.PrintNode(root);
+
+            var semantic = new Semantic(root);
+
+            semantic.CheckCode();
         }
     }
 }
