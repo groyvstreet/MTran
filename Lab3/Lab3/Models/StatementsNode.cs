@@ -1,6 +1,6 @@
 ﻿namespace Lab3.Models
 {
-    internal class StatementsNode : ExpressionNode
+    public class StatementsNode : ExpressionNode
     {
         public List<ExpressionNode> Nodes { get; set; } = new();
 

@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Lab3.Models
+﻿namespace Lab3.Models
 {
-    internal class ForNode : ExpressionNode
+    public class ForNode : ExpressionNode
     {
         public ExpressionNode First { get; set; }
         public ExpressionNode Second { get; set; }

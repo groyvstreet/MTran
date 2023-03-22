@@ -1,10 +1,9 @@
 ﻿using Lab2.Models;
 using Lab3.Models;
-using System.Net.Security;
 
 namespace Lab3
 {
-    internal class Program
+    public class Program
     {
         static void PrintTab(int amount)
         {
@@ -14,7 +13,7 @@ namespace Lab3
             }
         }
 
-        static void PrintNode(ExpressionNode? expressionNode, int level = 0)
+        static public void PrintNode(ExpressionNode? expressionNode, int level = 0)
         {
             if (expressionNode == null)
             {
@@ -168,7 +167,7 @@ namespace Lab3
 
         static void Main(string[] args)
         {
-            var path = "Program2.cpp";
+            var path = "Program1.cpp";
 
             using var reader = new StreamReader(path!);
             string codeText = reader.ReadToEnd();

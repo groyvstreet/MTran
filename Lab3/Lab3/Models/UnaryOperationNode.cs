@@ -2,7 +2,7 @@
 
 namespace Lab3.Models
 {
-    internal class UnaryOperationNode : ExpressionNode
+    public class UnaryOperationNode : ExpressionNode
     {
         public Token Operator { get; set; }
         public ExpressionNode Operand { get; set; }

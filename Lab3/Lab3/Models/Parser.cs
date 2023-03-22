@@ -1,9 +1,8 @@
 ﻿using Lab2.Models;
-using System.Reflection.Metadata.Ecma335;
 
 namespace Lab3.Models
 {
-    internal class Parser
+    public class Parser
     {
         public Lexer Lexer { get; set; }
         public List<Token> Tokens { get; set; }
@@ -157,14 +156,14 @@ namespace Lab3.Models
                     Position--;
                     break;
                 }
-                /*else if (@operator.Identifier == "==" || @operator.Identifier == "!=" || @operator.Identifier == "<"
-                    || @operator.Identifier == ">")
+                else if (@operator.Identifier == "==" || /*@operator.Identifier == "!=" ||*/ @operator.Identifier == "<" ||
+                    @operator.Identifier == ">")
                 {
                     var rightNode = ParseFormula();
                     leftNode = new BinaryOperationNode(@operator, leftNode, rightNode);
                     @operator = Match(Lexer.Operations.Keys.ToList());
                     @operator ??= Match(new List<string> { "[" });
-                }*/
+                }
                 else
                 {
                     var rightNode = ParseParentheses();

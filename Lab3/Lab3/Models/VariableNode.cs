@@ -2,7 +2,7 @@
 
 namespace Lab3.Models
 {
-    internal class VariableNode : ExpressionNode
+    public class VariableNode : ExpressionNode
     {
         public Token Variable { get; set; }
 
