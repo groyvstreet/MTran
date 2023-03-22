@@ -41,27 +41,42 @@ namespace Lab4.Models
 
             if (expressionNode is WhileNode whileNode)
             {
+                CheckNode(whileNode.Condition);
                 CheckNode(whileNode.Body);
             }
 
             if (expressionNode is IfNode ifNode)
             {
+                CheckNode(ifNode.Condition);
                 CheckNode(ifNode.Body);
                 CheckNode(ifNode.ElseBody);
             }
 
             if (expressionNode is CoutNode coutNode)
             {
-                return;
+                var parameters = coutNode.Parameters;
+
+                foreach (var parameter in parameters)
+                {
+                    CheckNode(parameter);
+                }
             }
 
             if (expressionNode is CinNode cinNode)
             {
-                return;
+                var parameters = cinNode.Parameters;
+
+                foreach (var parameter in parameters)
+                {
+                    CheckNode(parameter);
+                }
             }
 
             if (expressionNode is ForNode forNode)
             {
+                CheckNode(forNode.First);
+                CheckNode(forNode.Second);
+                CheckNode(forNode.Third);
                 CheckNode(forNode.Body);
             }
 
@@ -94,7 +109,7 @@ namespace Lab4.Models
                 if (switchNode.Variable.Type != "int" && switchNode.Variable.Type != "char" &&
                     switchNode.Variable.Type != "bool")
                 {
-                    throw new Exception("Выражение в 'switch' должно быть типа int или char");
+                    throw new Exception("Выражение в 'switch' должно быть типа int, char или bool");
                 }
 
                 CheckNode(switchNode.Body);
@@ -102,13 +117,14 @@ namespace Lab4.Models
 
             if (expressionNode is CaseNode caseNode)
             {
-                if (caseNode.Literal.Type != "int literal" && caseNode.Literal.Type != "char literal")
+                if (caseNode.Literal.Type != "int literal" && caseNode.Literal.Type != "char literal" &&
+                    caseNode.Literal.Type != "bool literal")
                 {
-                    throw new Exception("После 'case' ожидается int literal или char literal");
+                    throw new Exception("После 'case' ожидается int literal, char literal или bool literal");
                 }
             }
 
-            if (expressionNode is KeyWordNode keyWordNode)
+            if (expressionNode is KeyWordNode)
             {
                 return;
             }
@@ -123,7 +139,27 @@ namespace Lab4.Models
                     if (returnType1 == "string" || returnType1 == "bool" ||
                         returnType2 == "string" || returnType2 == "bool")
                     {
-                        throw new Exception($"Невозможно выполнить операцию {binaryOperationNode.Operator.Identifier} для {returnType1} и {returnType2}");
+                        if (binaryOperationNode.Operator.Identifier != "new" && binaryOperationNode.Operator.Identifier != "[]")
+                        {
+                            throw new Exception($"Невозможно выполнить операцию {binaryOperationNode.Operator.Identifier} для {returnType1} и {returnType2}");
+                        }
+                        else
+                        {
+                            if (returnType2 != "int" && returnType2 != "char")
+                            {
+                                throw new Exception($"Невозможно выполнить операцию {binaryOperationNode.Operator.Identifier} для {returnType1} и {returnType2}");
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    if (binaryOperationNode.Operator.Identifier == "new" || binaryOperationNode.Operator.Identifier == "[]")
+                    {
+                        if (returnType1 != "int" && returnType2 != "char")
+                        {
+                            throw new Exception($"Невозможно выполнить операцию {binaryOperationNode.Operator.Identifier} для {returnType1} и {returnType2}");
+                        }
                     }
                 }
             }
@@ -138,17 +174,17 @@ namespace Lab4.Models
                 }
             }
 
-            if (expressionNode is LiteralNode literalNode)
+            if (expressionNode is LiteralNode)
             {
                 return;
             }
 
-            if (expressionNode is VariableNode variableNode)
+            if (expressionNode is VariableNode)
             {
                 return;
             }
 
-            if (expressionNode is VariableTypeNode variableTypeNode)
+            if (expressionNode is VariableTypeNode)
             {
                 return;
             }

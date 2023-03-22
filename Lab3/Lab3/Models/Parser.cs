@@ -168,7 +168,7 @@ namespace Lab3.Models
                 {
                     var rightNode = ParseParentheses();
 
-                    if (leftNode is BinaryOperationNode binary)
+                    /*if (leftNode is BinaryOperationNode binary)
                     {
                         binary.RightNode = new BinaryOperationNode(@operator, binary.RightNode, rightNode);
                         leftNode = binary;
@@ -176,7 +176,9 @@ namespace Lab3.Models
                     else
                     {
                         leftNode = new BinaryOperationNode(@operator, leftNode, rightNode);
-                    }
+                    }*/
+
+                    leftNode = new BinaryOperationNode(@operator, leftNode, rightNode); //
 
                     @operator = Match(Lexer.Operations.Keys.ToList());
                     @operator ??= Match(new List<string> { "[" });
