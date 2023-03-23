@@ -68,7 +68,11 @@ namespace Lab4.Models
 
                 foreach (var parameter in parameters)
                 {
-                    CheckNode(parameter);
+                    if (!(parameter is BinaryOperationNode operation && operation.Operator.Identifier == "[]") &&
+                        parameter is not VariableNode)
+                    {
+                        throw new Exception("В качестве параметра для 'cin' ожидается переменная");
+                    }
                 }
             }
 
@@ -298,6 +302,31 @@ namespace Lab4.Models
                 }
 
                 return returnType;
+            }
+
+            if (expressionNode is IfNode ifNode)
+            {
+                CheckNode(ifNode.Condition);
+                CheckNode(ifNode.Body);
+                CheckNode(ifNode.ElseBody);
+
+                var returnType1 = GetReturnType(ifNode.Body);
+                var returnType2 = GetReturnType(ifNode.ElseBody!);
+
+                if (returnType1 != returnType2)
+                {
+                    if ((returnType1 != "int" || returnType2 != "double") &&
+                        (returnType1 != "int" || returnType2 != "char") &&
+                        (returnType1 != "double" || returnType2 != "char") &&
+                        (returnType1 != "double" || returnType2 != "int") &&
+                        (returnType1 != "char" || returnType2 != "int") &&
+                        (returnType1 != "char" || returnType2 != "double"))
+                    {
+                        throw new Exception($"Несоответствие возвращаемых типов в тернарном операторе сравнения: {returnType1} и {returnType2}");
+                    }
+                }
+
+                return returnType1;
             }
 
             if (expressionNode is VariableNode variableNode)
