@@ -68,8 +68,15 @@ namespace Lab4.Models
 
                 foreach (var parameter in parameters)
                 {
-                    if (!(parameter is BinaryOperationNode operation && operation.Operator.Identifier == "[]") &&
-                        parameter is not VariableNode)
+                    if (parameter is BinaryOperationNode operation && operation.Operator.Identifier == "[]")
+                    {
+                        CheckNode(operation);
+                    }
+                    else if (parameter is VariableNode variable)
+                    {
+                        CheckNode(variable);
+                    }
+                    else
                     {
                         throw new Exception("В качестве параметра для 'cin' ожидается переменная");
                     }
