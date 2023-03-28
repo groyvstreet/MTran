@@ -205,7 +205,7 @@ namespace Lab4.Models
             }
         }
 
-        private string GetReturnType(ExpressionNode expressionNode)
+        public string GetReturnType(ExpressionNode expressionNode)
         {
             if (expressionNode is BinaryOperationNode binaryOperationNode)
             {

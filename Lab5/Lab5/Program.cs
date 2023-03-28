@@ -33,9 +33,9 @@ namespace Lab5
 
             semantic.CheckCode();
 
-            var executor = new Executor(root);
+            var executor = new Executor(root, lexer.VariablesTables, semantic);
 
-            executor.RunCode();
+            executor.ExecuteCode();
         }
     }
 }
