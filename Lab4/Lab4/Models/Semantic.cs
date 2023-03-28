@@ -3,7 +3,7 @@ using Lab3.Models;
 
 namespace Lab4.Models
 {
-    internal class Semantic
+    public class Semantic
     {
         private ExpressionNode Root { get; set; }
         private Dictionary<string, List<Token>> Functions { get; set; } = new();
