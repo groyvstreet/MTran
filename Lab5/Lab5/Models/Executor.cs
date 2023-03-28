@@ -6,11 +6,15 @@ namespace Lab5.Models
     internal class Executor
     {
         private ExpressionNode Root { get; set; }
+        private Dictionary<string, Dictionary<string, string>> VariablesTables { get; set; }
+        private int BlockIndex { get; set; }
         //private Dictionary<string, List<Token>> Functions { get; set; } = new();
 
-        public Executor(ExpressionNode root)
+        public Executor(ExpressionNode root, Dictionary<string, Dictionary<string, string>> variablesTables)
         {
             Root = root;
+            VariablesTables = variablesTables;
+            BlockIndex = -1;
         }
 
         public void RunCode()
@@ -18,96 +22,121 @@ namespace Lab5.Models
             RunNode(Root);
         }
 
-        private void RunNode(ExpressionNode expressionNode)
+        private object? RunNode(ExpressionNode expressionNode)
         {
             if (expressionNode == null)
             {
-                return;
+                return null;
             }
 
             if (expressionNode is StatementsNode node)
             {
+                BlockIndex++;
+
                 foreach (var elem in node.Nodes)
                 {
                     RunNode(elem);
                 }
+
+                BlockIndex--;
             }
 
             if (expressionNode is FunctionNode functionNode)
             {
-                return;
+                return null;
             }
 
             if (expressionNode is WhileNode whileNode)
             {
-                return;
+                return null;
             }
 
             if (expressionNode is IfNode ifNode)
             {
-                return;
+                return null;
             }
 
             if (expressionNode is CoutNode coutNode)
             {
-                return;
+                return null;
             }
 
             if (expressionNode is CinNode cinNode)
             {
-                return;
+                return null;
             }
 
             if (expressionNode is ForNode forNode)
             {
-                return;
+                return null;
             }
 
             if (expressionNode is FunctionExecutionNode functionExecutionNode)
             {
-                return;
+                return null;
             }
 
             if (expressionNode is SwitchNode switchNode)
             {
 
-                return;
+                return null;
             }
 
             if (expressionNode is CaseNode caseNode)
             {
-                return;
+                return null;
             }
 
             if (expressionNode is KeyWordNode)
             {
-                return;
+                return null;
             }
 
             if (expressionNode is BinaryOperationNode binaryOperationNode)
             {
-                return;
+                return null;
             }
 
             if (expressionNode is UnaryOperationNode unaryOperationNode)
             {
-                return;
+                return null;
             }
 
             if (expressionNode is LiteralNode)
             {
-                return;
+                return null;
             }
 
-            if (expressionNode is VariableNode)
+            if (expressionNode is VariableNode variableNode)
             {
-                return;
+                var block = GetBlock();
+
+                return VariablesTables[block][variableNode.Variable.Identifier];
             }
 
             if (expressionNode is VariableTypeNode)
             {
-                return;
+                return null;
             }
+
+            return null;
+        }
+
+        private string GetBlock()
+        {
+            var index = 0;
+
+            foreach (var key in VariablesTables.Keys)
+            {
+                if (index == BlockIndex)
+                {
+                    return key;
+                }
+
+                index++;
+            }
+
+            return string.Empty;
         }
     }
 }
