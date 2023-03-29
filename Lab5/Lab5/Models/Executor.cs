@@ -10,7 +10,7 @@ namespace Lab5.Models
         private Dictionary<string, Dictionary<string, object>> VariablesTables { get; set; } = new();
         private Semantic Semantic { get; set; }
         private int BlockIndex { get; set; }
-        private Dictionary<string, string> FunctionsBlocks { get; set; } = new();
+        private Dictionary<string, Dictionary<string, ExpressionNode>> Functions { get; set; } = new();
         private bool IsInFor { get; set; }
         private string Block { get; set; }
         private int Level { get; set; }
@@ -102,6 +102,38 @@ namespace Lab5.Models
                 }
                 else
                 {
+                    Level++;
+                    Name++;
+
+                    var temp = Block.Split(':');
+                    temp[0] = Level.ToString();
+                    Block = string.Empty;
+                    Block += temp[0];
+
+                    for (var i = 1; i < temp.Length; i++)
+                    {
+                        Block += $":{temp[i]}";
+                    }
+
+                    Block += $":{Name}";
+
+                    Functions.Add(functionNode.Function.Identifier, new Dictionary<string, ExpressionNode> { { Block, functionNode.Body } });
+
+                    Level--;
+                    Name--;
+
+                    Block = Block.Remove(Block.Length - 2);
+
+                    var temp2 = Block.Split(':');
+                    temp2[0] = Level.ToString();
+                    Block = string.Empty;
+                    Block += temp2[0];
+
+                    for (var i = 1; i < temp2.Length; i++)
+                    {
+                        Block += $":{temp2[i]}";
+                    }
+
                     RunNode(functionNode.Body);
                 }
 
@@ -110,6 +142,43 @@ namespace Lab5.Models
 
             if (expressionNode is WhileNode whileNode)
             {
+                while (true)
+                {
+                    var condition = ExecuteNode(whileNode.Condition) as bool?;
+
+                    if (condition != null)
+                    {
+                        if (condition == false)
+                        {
+                            /*Level--;
+
+                            Block = Block.Remove(Block.Length - 2);
+
+                            var temp2 = Block.Split(':');
+                            temp2[0] = Level.ToString();
+                            Block = string.Empty;
+                            Block += temp2[0];
+
+                            for (var i = 1; i < temp2.Length; i++)
+                            {
+                                Block += $":{temp2[i]}";
+                            }*/
+
+                            break;
+                        }
+                    }
+
+                    IsInFor = true;
+                    var level = Level;
+                    var name = Name;
+                    var block = Block;
+                    ExecuteNode(whileNode.Body);
+
+                    Level = level;
+                    Name = name;
+                    Block = block;
+                }
+
                 return null;
             }
 
@@ -307,6 +376,33 @@ namespace Lab5.Models
 
             if (expressionNode is FunctionExecutionNode functionExecutionNode)
             {
+                var level = Level;
+                var name = Name;
+                var block = Block;
+
+                foreach (var bl in Functions[functionExecutionNode.Function.Identifier].Keys)
+                {
+                    foreach (var body in Functions[functionExecutionNode.Function.Identifier].Values)
+                    {
+                        var parameters = VariablesTables[bl].Keys.ToList();
+
+                        for (var i = 0; i < functionExecutionNode.Parameters.Count; i++)
+                        {
+                            VariablesTables[bl][parameters[i]] = ExecuteNode(functionExecutionNode.Parameters[i]);
+                        }
+
+                        Block = bl;
+                        Level = int.Parse(bl.Split(":")[0]);
+                        Name = int.Parse(bl.Split(":")[^1]);
+                        IsInFor = true;
+                        ExecuteNode(body);
+                    }
+                }
+
+                Level = level;
+                Name = name;
+                Block = block;
+
                 return null;
             }
 
