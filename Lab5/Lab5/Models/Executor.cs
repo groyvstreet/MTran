@@ -1,8 +1,6 @@
 ﻿using Lab2.Models;
 using Lab3.Models;
 using Lab4.Models;
-using System.Linq.Expressions;
-using System.Reflection.Metadata;
 
 namespace Lab5.Models
 {
@@ -13,6 +11,11 @@ namespace Lab5.Models
         private Semantic Semantic { get; set; }
         private int BlockIndex { get; set; }
         private Dictionary<string, string> FunctionsBlocks { get; set; } = new();
+        private bool IsInFor { get; set; }
+        private string Block { get; set; }
+        private int Level { get; set; }
+        private int Name { get; set; }
+        private int Fors { get; set; }
 
         public Executor(ExpressionNode root, Dictionary<string, Dictionary<string, string>> variablesTables, Semantic semantic)
         {
@@ -30,6 +33,11 @@ namespace Lab5.Models
 
             BlockIndex = -1;
             Semantic = semantic;
+            IsInFor = false;
+            Block = "-1";
+            Level = -1;
+            Name = -1;
+            Fors = 0;
         }
 
         public void ExecuteCode()
@@ -46,11 +54,50 @@ namespace Lab5.Models
 
             if (expressionNode is StatementsNode node)
             {
-                BlockIndex++;
+                if (!IsInFor)
+                {
+                    Level++;
+                    Name++;
+
+                    var temp = Block.Split(':');
+                    temp[0] = Level.ToString();
+                    Block = string.Empty;
+                    Block += temp[0];
+
+                    for (var i = 1; i < temp.Length; i++)
+                    {
+                        Block += $":{temp[i]}";
+                    }
+
+                    Block += $":{Name}";
+                }
+                else
+                {
+                    IsInFor = false;
+                }
 
                 foreach (var elem in node.Nodes)
                 {
                     ExecuteNode(elem);
+                }
+
+                Level--;
+
+                /*if (IsInCycle > 1)
+                {
+                    Name--;
+                }*/
+
+                Block = Block.Remove(Block.Length - 2);
+
+                var temp2 = Block.Split(':');
+                temp2[0] = Level.ToString();
+                Block = string.Empty;
+                Block += temp2[0];
+
+                for (var i = 1; i < temp2.Length; i++)
+                {
+                    Block += $":{temp2[i]}";
                 }
             }
 
@@ -103,20 +150,63 @@ namespace Lab5.Models
 
                     if (parameter is VariableNode variable)
                     {
-                        VariablesTables[block][variable.Variable.Identifier] = type switch
+                        while (block != "-1")
                         {
-                            "int" => int.Parse(Console.ReadLine()!),
-                            "double" => double.Parse(Console.ReadLine()!),
-                            "char" => char.Parse(Console.ReadLine()!),
-                            "bool" => bool.Parse(Console.ReadLine()!),
-                            _ => Console.ReadLine()!,
-                        };
+                            if (VariablesTables[block].ContainsKey(variable.Variable.Identifier))
+                            {
+                                VariablesTables[block][variable.Variable.Identifier] = type switch
+                                {
+                                    "int" => int.Parse(Console.ReadLine()!),
+                                    "double" => double.Parse(Console.ReadLine()!),
+                                    "char" => char.Parse(Console.ReadLine()!),
+                                    "bool" => bool.Parse(Console.ReadLine()!),
+                                    _ => Console.ReadLine()!,
+                                };
+                                break;
+                            }
+                            else
+                            {
+                                block = block.Remove(block.Length - 2);
+
+                                var temp = block.Split(':');
+                                temp[0] = (int.Parse(temp[0]) - 1).ToString();
+                                block = string.Empty;
+                                block += temp[0];
+
+                                for (var i = 1; i < temp.Length; i++)
+                                {
+                                    block += $":{temp[i]}";
+                                }
+                            }
+                        }
                     }
 
                     if (parameter is BinaryOperationNode binaryOperation)
                     {
                         var left = binaryOperation.LeftNode as VariableNode;
                         var index = ExecuteNode(binaryOperation.RightNode) as int?;
+
+                        while (block != "-1")
+                        {
+                            if (VariablesTables[block].ContainsKey(left!.Variable.Identifier))
+                            {
+                                break;
+                            }
+                            else
+                            {
+                                block = block.Remove(block.Length - 2);
+
+                                var temp = block.Split(':');
+                                temp[0] = (int.Parse(temp[0]) - 1).ToString();
+                                block = string.Empty;
+                                block += temp[0];
+
+                                for (var i = 1; i < temp.Length; i++)
+                                {
+                                    block += $":{temp[i]}";
+                                }
+                            }
+                        }
 
                         if (type == "int")
                         {
@@ -146,6 +236,76 @@ namespace Lab5.Models
 
             if (expressionNode is ForNode forNode)
             {
+                Fors++;
+                Level++;
+                Name++;
+
+                var temp = Block.Split(':');
+                temp[0] = Level.ToString();
+                Block = string.Empty;
+                Block += temp[0];
+
+                for (var i = 1; i < temp.Length; i++)
+                {
+                    Block += $":{temp[i]}";
+                }
+
+                Block += $":{Name}";
+
+                ExecuteNode(forNode.First);
+
+                while (true)
+                {
+                    var condition = ExecuteNode(forNode.Second) as bool?;
+
+                    if (condition != null)
+                    {
+                        if (condition == false)
+                        {
+                            Level--;
+
+                            Block = Block.Remove(Block.Length - 2);
+
+                            var temp3 = Block.Split(':');
+                            temp3[0] = Level.ToString();
+                            Block = string.Empty;
+                            Block += temp3[0];
+
+                            for (var i = 1; i < temp3.Length; i++)
+                            {
+                                Block += $":{temp3[i]}";
+                            }
+
+                            if (Fors > 1)
+                            {
+                                Name--;
+                            }
+
+                            Fors--;
+
+                            break;
+                        }
+                    }
+
+                    IsInFor = true;
+                    ExecuteNode(forNode.Body);
+                    
+                    Level++;
+
+                    var temp2 = Block.Split(':');
+                    temp2[0] = Level.ToString();
+                    Block = string.Empty;
+                    Block += temp2[0];
+
+                    for (var i = 1; i < temp2.Length; i++)
+                    {
+                        Block += $":{temp2[i]}";
+                    }
+
+                    Block += $":{Name}";
+                    ExecuteNode(forNode.Third);
+                }
+
                 return null;
             }
 
@@ -214,7 +374,7 @@ namespace Lab5.Models
                                 switch (rightType)
                                 {
                                     case "int":
-                                        var intRight = ExecuteNode(binaryOperationNode.LeftNode) as int?;
+                                        var intRight = ExecuteNode(binaryOperationNode.RightNode) as int?;
                                         return binaryOperationNode.Operator.Identifier switch
                                         {
                                             "==" => intLeft == intRight,
@@ -227,7 +387,7 @@ namespace Lab5.Models
                                             "/" => intLeft / intRight,
                                         };
                                     case "double":
-                                        var doubleRight = ExecuteNode(binaryOperationNode.LeftNode) as double?;
+                                        var doubleRight = ExecuteNode(binaryOperationNode.RightNode) as double?;
                                         return binaryOperationNode.Operator.Identifier switch
                                         {
                                             "==" => intLeft == doubleRight,
@@ -240,7 +400,7 @@ namespace Lab5.Models
                                             "/" => intLeft / doubleRight,
                                         };
                                     case "char":
-                                        var charRight = ExecuteNode(binaryOperationNode.LeftNode) as char?;
+                                        var charRight = ExecuteNode(binaryOperationNode.RightNode) as char?;
                                         return binaryOperationNode.Operator.Identifier switch
                                         {
                                             "==" => intLeft == charRight,
@@ -259,7 +419,7 @@ namespace Lab5.Models
                                 switch (rightType)
                                 {
                                     case "int":
-                                        var intRight = ExecuteNode(binaryOperationNode.LeftNode) as int?;
+                                        var intRight = ExecuteNode(binaryOperationNode.RightNode) as int?;
                                         return binaryOperationNode.Operator.Identifier switch
                                         {
                                             "==" => doubleLeft == intRight,
@@ -272,7 +432,7 @@ namespace Lab5.Models
                                             "/" => doubleLeft / intRight,
                                         };
                                     case "double":
-                                        var doubleRight = ExecuteNode(binaryOperationNode.LeftNode) as double?;
+                                        var doubleRight = ExecuteNode(binaryOperationNode.RightNode) as double?;
                                         return binaryOperationNode.Operator.Identifier switch
                                         {
                                             "==" => doubleLeft == doubleRight,
@@ -285,7 +445,7 @@ namespace Lab5.Models
                                             "/" => doubleLeft / doubleRight,
                                         };
                                     case "char":
-                                        var charRight = ExecuteNode(binaryOperationNode.LeftNode) as char?;
+                                        var charRight = ExecuteNode(binaryOperationNode.RightNode) as char?;
                                         return binaryOperationNode.Operator.Identifier switch
                                         {
                                             "==" => doubleLeft == charRight,
@@ -304,7 +464,7 @@ namespace Lab5.Models
                                 switch (rightType)
                                 {
                                     case "int":
-                                        var intRight = ExecuteNode(binaryOperationNode.LeftNode) as int?;
+                                        var intRight = ExecuteNode(binaryOperationNode.RightNode) as int?;
                                         return binaryOperationNode.Operator.Identifier switch
                                         {
                                             "==" => charLeft == intRight,
@@ -317,7 +477,7 @@ namespace Lab5.Models
                                             "/" => charLeft / intRight,
                                         };
                                     case "double":
-                                        var doubleRight = ExecuteNode(binaryOperationNode.LeftNode) as double?;
+                                        var doubleRight = ExecuteNode(binaryOperationNode.RightNode) as double?;
                                         return binaryOperationNode.Operator.Identifier switch
                                         {
                                             "==" => charLeft == doubleRight,
@@ -330,7 +490,7 @@ namespace Lab5.Models
                                             "/" => charLeft / doubleRight,
                                         };
                                     case "char":
-                                        var charRight = ExecuteNode(binaryOperationNode.LeftNode) as char?;
+                                        var charRight = ExecuteNode(binaryOperationNode.RightNode) as char?;
                                         return binaryOperationNode.Operator.Identifier switch
                                         {
                                             "==" => charLeft == charRight,
@@ -353,7 +513,7 @@ namespace Lab5.Models
                                     boolToIntLeft = 1;
                                 }
 
-                                var boolRight = ExecuteNode(binaryOperationNode.LeftNode) as bool?;
+                                var boolRight = ExecuteNode(binaryOperationNode.RightNode) as bool?;
                                 var boolToIntRight = 0;
 
                                 if (boolRight == true)
@@ -374,7 +534,7 @@ namespace Lab5.Models
                                 };
                             case "string":
                                 var stringLeft = ExecuteNode(binaryOperationNode.LeftNode) as string;
-                                var stringRight = ExecuteNode(binaryOperationNode.LeftNode) as string;
+                                var stringRight = ExecuteNode(binaryOperationNode.RightNode) as string;
 
                                 return binaryOperationNode.Operator.Identifier switch
                                 {
@@ -466,6 +626,48 @@ namespace Lab5.Models
 
             if (expressionNode is UnaryOperationNode unaryOperationNode)
             {
+                if (unaryOperationNode.Operator.Identifier == "++")
+                {
+                    var variable = unaryOperationNode.Operand as VariableNode;
+                    var block = GetBlock();
+
+                    if (variable.Variable.Type == "int")
+                    {
+                        VariablesTables[block][variable.Variable.Identifier] = (VariablesTables[block][variable.Variable.Identifier] as int?)! + 1;
+                    }
+
+                    if (variable.Variable.Type == "double")
+                    {
+                        VariablesTables[block][variable.Variable.Identifier] = (VariablesTables[block][variable.Variable.Identifier] as double?)! + 1;
+                    }
+
+                    if (variable.Variable.Type == "char")
+                    {
+                        VariablesTables[block][variable.Variable.Identifier] = (VariablesTables[block][variable.Variable.Identifier] as char?)! + 1;
+                    }
+                }
+
+                if (unaryOperationNode.Operator.Identifier == "--")
+                {
+                    var variable = unaryOperationNode.Operand as VariableNode;
+                    var block = GetBlock();
+
+                    if (variable.Variable.Type == "int")
+                    {
+                        VariablesTables[block][variable.Variable.Identifier] = (VariablesTables[block][variable.Variable.Identifier] as int?)! - 1;
+                    }
+
+                    if (variable.Variable.Type == "double")
+                    {
+                        VariablesTables[block][variable.Variable.Identifier] = (VariablesTables[block][variable.Variable.Identifier] as double?)! - 1;
+                    }
+
+                    if (variable.Variable.Type == "char")
+                    {
+                        VariablesTables[block][variable.Variable.Identifier] = (VariablesTables[block][variable.Variable.Identifier] as char?)! - 1;
+                    }
+                }
+
                 return null;
             }
 
@@ -484,7 +686,27 @@ namespace Lab5.Models
             {
                 var block = GetBlock();
 
-                return VariablesTables[block][variableNode.Variable.Identifier];
+                while (block != "-1")
+                {
+                    if (VariablesTables[block].ContainsKey(variableNode.Variable.Identifier))
+                    {
+                        return VariablesTables[block][variableNode.Variable.Identifier];
+                    }
+                    else
+                    {
+                        block = block.Remove(block.Length - 2);
+
+                        var temp = block.Split(':');
+                        temp[0] = (int.Parse(temp[0]) - 1).ToString();
+                        block = string.Empty;
+                        block += temp[0];
+
+                        for (var i = 1; i < temp.Length; i++)
+                        {
+                            block += $":{temp[i]}";
+                        }
+                    }
+                }
             }
 
             if (expressionNode is VariableTypeNode)
@@ -497,6 +719,8 @@ namespace Lab5.Models
 
         private string GetBlock()
         {
+            return Block;
+
             var index = 0;
 
             foreach (var key in VariablesTables.Keys)
@@ -521,37 +745,40 @@ namespace Lab5.Models
 
             if (expressionNode is StatementsNode node)
             {
-                BlockIndex++;
+                Level++;
+                Name++;
+
+                var temp = Block.Split(':');
+                temp[0] = (int.Parse(temp[0]) + 1).ToString();
+                Block = string.Empty;
+                Block += temp[0];
+
+                for (var i = 1; i < temp.Length; i++)
+                {
+                    Block += $":{temp[i]}";
+                }
+
+                Block += $":{Name}";
 
                 foreach (var elem in node.Nodes)
                 {
                     RunNode(elem);
                 }
-            }
-        }
 
-        private object Assign(ExpressionNode expressionNode)
-        {
-            var block = GetBlock();
+                Level--;
 
-            if (expressionNode is VariableNode variableNode)
-            {
-                return VariablesTables[block][variableNode.Variable.Identifier];
-            }
+                Block = Block.Remove(Block.Length - 2);
 
-            if (expressionNode is BinaryOperationNode binaryOperationNode)
-            {
-                var type = Semantic.GetReturnType(binaryOperationNode.LeftNode);
+                var temp2 = Block.Split(':');
+                temp2[0] = Level.ToString();
+                Block = string.Empty;
+                Block += temp2[0];
 
-                if (type == "int")
+                for (var i = 1; i < temp2.Length; i++)
                 {
-                    var variable = Assign(binaryOperationNode.LeftNode) as List<object>;
-                    var index = ExecuteNode(binaryOperationNode.RightNode) as int?;
-                    return variable![int.Parse(index.ToString()!)];
+                    Block += $":{temp2[i]}";
                 }
             }
-
-            return new();
         }
     }
 }
