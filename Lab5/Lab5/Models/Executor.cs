@@ -15,7 +15,6 @@ namespace Lab5.Models
         private string Block { get; set; }
         private int Level { get; set; }
         private int Name { get; set; }
-        private int Fors { get; set; }
 
         public Executor(ExpressionNode root, Dictionary<string, Dictionary<string, string>> variablesTables, Semantic semantic)
         {
@@ -37,7 +36,6 @@ namespace Lab5.Models
             Block = "-1";
             Level = -1;
             Name = -1;
-            Fors = 0;
         }
 
         public void ExecuteCode()
@@ -45,7 +43,7 @@ namespace Lab5.Models
             ExecuteNode(Root);
         }
 
-        private object? ExecuteNode(ExpressionNode expressionNode)
+        private object? ExecuteNode(ExpressionNode? expressionNode)
         {
             if (expressionNode == null)
             {
@@ -83,11 +81,6 @@ namespace Lab5.Models
 
                 Level--;
 
-                /*if (IsInCycle > 1)
-                {
-                    Name--;
-                }*/
-
                 Block = Block.Remove(Block.Length - 2);
 
                 var temp2 = Block.Split(':');
@@ -103,11 +96,13 @@ namespace Lab5.Models
 
             if (expressionNode is FunctionNode functionNode)
             {
-                RunNode(functionNode.Body);
-
                 if (functionNode.Function.Identifier == "main")
                 {
                     ExecuteNode(functionNode.Body);
+                }
+                else
+                {
+                    RunNode(functionNode.Body);
                 }
 
                 return null;
@@ -120,6 +115,17 @@ namespace Lab5.Models
 
             if (expressionNode is IfNode ifNode)
             {
+                var condition = ExecuteNode(ifNode.Condition) as bool?;
+
+                if (condition == true)
+                {
+                    ExecuteNode(ifNode.Body);
+                }
+                else
+                {
+                    ExecuteNode(ifNode.ElseBody);
+                }
+
                 return null;
             }
 
@@ -236,7 +242,6 @@ namespace Lab5.Models
 
             if (expressionNode is ForNode forNode)
             {
-                Fors++;
                 Level++;
                 Name++;
 
@@ -266,45 +271,36 @@ namespace Lab5.Models
 
                             Block = Block.Remove(Block.Length - 2);
 
-                            var temp3 = Block.Split(':');
-                            temp3[0] = Level.ToString();
+                            var temp2 = Block.Split(':');
+                            temp2[0] = Level.ToString();
                             Block = string.Empty;
-                            Block += temp3[0];
+                            Block += temp2[0];
 
-                            for (var i = 1; i < temp3.Length; i++)
+                            for (var i = 1; i < temp2.Length; i++)
                             {
-                                Block += $":{temp3[i]}";
+                                Block += $":{temp2[i]}";
                             }
-
-                            if (Fors > 1)
-                            {
-                                Name--;
-                            }
-
-                            Fors--;
 
                             break;
                         }
                     }
 
                     IsInFor = true;
+                    var level = Level;
+                    var name = Name;
+                    var block = Block;
                     ExecuteNode(forNode.Body);
-                    
-                    Level++;
 
-                    var temp2 = Block.Split(':');
-                    temp2[0] = Level.ToString();
-                    Block = string.Empty;
-                    Block += temp2[0];
+                    Level = level;
+                    Name = name;
+                    Block = block;
 
-                    for (var i = 1; i < temp2.Length; i++)
-                    {
-                        Block += $":{temp2[i]}";
-                    }
-
-                    Block += $":{Name}";
                     ExecuteNode(forNode.Third);
                 }
+
+                Name--;
+
+                RunNode(forNode);
 
                 return null;
             }
@@ -345,6 +341,28 @@ namespace Lab5.Models
 
                         if (binaryOperationNode.LeftNode is VariableNode variable)
                         {
+                            while (block != "-1")
+                            {
+                                if (VariablesTables[block].ContainsKey(variable.Variable.Identifier))
+                                {
+                                    break;
+                                }
+                                else
+                                {
+                                    block = block.Remove(block.Length - 2);
+
+                                    var temp = block.Split(':');
+                                    temp[0] = (int.Parse(temp[0]) - 1).ToString();
+                                    block = string.Empty;
+                                    block += temp[0];
+
+                                    for (var i = 1; i < temp.Length; i++)
+                                    {
+                                        block += $":{temp[i]}";
+                                    }
+                                }
+                            }
+
                             VariablesTables[block][variable.Variable.Identifier] = ExecuteNode(binaryOperationNode.RightNode);
                         }
 
@@ -353,7 +371,50 @@ namespace Lab5.Models
                             var left = binaryOperation.LeftNode as VariableNode;
                             var index = ExecuteNode(binaryOperation.RightNode) as int?;
 
-                            (VariablesTables[block][left.Variable.Identifier] as List<object>)[int.Parse(index.ToString())] = ExecuteNode(binaryOperationNode.RightNode);
+                            while (block != "-1")
+                            {
+                                if (VariablesTables[block].ContainsKey(left.Variable.Identifier))
+                                {
+                                    break;
+                                }
+                                else
+                                {
+                                    block = block.Remove(block.Length - 2);
+
+                                    var temp = block.Split(':');
+                                    temp[0] = (int.Parse(temp[0]) - 1).ToString();
+                                    block = string.Empty;
+                                    block += temp[0];
+
+                                    for (var i = 1; i < temp.Length; i++)
+                                    {
+                                        block += $":{temp[i]}";
+                                    }
+                                }
+                            }
+
+                            var type3 = Semantic.GetReturnType(binaryOperation.LeftNode);
+
+                            if (type3 == "int")
+                            {
+                                (VariablesTables[block][left.Variable.Identifier] as List<int>)[int.Parse(index.ToString())] = int.Parse((ExecuteNode(binaryOperationNode.RightNode) as int?).ToString());
+                            }
+                            else if (type3 == "double")
+                            {
+                                (VariablesTables[block][left.Variable.Identifier] as List<double>)[int.Parse(index.ToString())] = double.Parse((ExecuteNode(binaryOperationNode.RightNode) as double?).ToString());
+                            }
+                            else if (type3 == "char")
+                            {
+                                (VariablesTables[block][left.Variable.Identifier] as List<char>)[int.Parse(index.ToString())] = char.Parse((ExecuteNode(binaryOperationNode.RightNode) as char?).ToString());
+                            }
+                            else if (type3 == "bool")
+                            {
+                                (VariablesTables[block][left.Variable.Identifier] as List<bool>)[int.Parse(index.ToString())] = bool.Parse((ExecuteNode(binaryOperationNode.RightNode) as bool?).ToString());
+                            }
+                            else
+                            {
+                                (VariablesTables[block][left.Variable.Identifier] as List<string>)[int.Parse(index.ToString())] = ExecuteNode(binaryOperationNode.RightNode) as string;
+                            }
                         }
                         break;
                     case "==":
@@ -540,8 +601,8 @@ namespace Lab5.Models
                                 {
                                     "==" => stringLeft == stringRight,
                                     "!=" => stringLeft != stringRight,
-                                    "<" => throw new Exception("Невозможно применить оператор '<' для string и string"),
-                                    ">" => throw new Exception("Невозможно применить оператор '>' для string и string"),
+                                    "<" => stringLeft.CompareTo(stringRight) < 0 ? true : false,
+                                    ">" => stringLeft.CompareTo(stringRight) > 0 ? true : false,
                                     "+" => stringLeft + stringRight,
                                     "-" => throw new Exception("Невозможно применить оператор '-' для string и string"),
                                     "*" => throw new Exception("Невозможно применить оператор '*' для string и string"),
@@ -778,6 +839,21 @@ namespace Lab5.Models
                 {
                     Block += $":{temp2[i]}";
                 }
+            }
+
+            if (expressionNode is ForNode forNode)
+            {
+                RunNode(forNode.Body);
+            }
+
+            if (expressionNode is IfNode ifNode)
+            {
+                RunNode(ifNode.Body);
+            }
+
+            if (expressionNode is WhileNode whileNode)
+            {
+                RunNode(whileNode.Body);
             }
         }
     }
