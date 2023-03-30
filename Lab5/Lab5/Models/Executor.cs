@@ -15,6 +15,10 @@ namespace Lab5.Models
         private string Block { get; set; }
         private int Level { get; set; }
         private int Name { get; set; }
+        private object SwitchValue { get; set; }
+        private bool ToExecute { get; set; }
+        private bool Default { get; set; }
+        private bool Switched { get; set; }
 
         public Executor(ExpressionNode root, Dictionary<string, Dictionary<string, string>> variablesTables, Semantic semantic)
         {
@@ -36,6 +40,10 @@ namespace Lab5.Models
             Block = "-1";
             Level = -1;
             Name = -1;
+            SwitchValue = new();
+            ToExecute = true;
+            Default = false;
+            Switched = false;
         }
 
         public void ExecuteCode()
@@ -140,7 +148,7 @@ namespace Lab5.Models
                 return null;
             }
 
-            if (expressionNode is WhileNode whileNode)
+            if (expressionNode is WhileNode whileNode && (ToExecute || Default))
             {
                 while (true)
                 {
@@ -182,23 +190,23 @@ namespace Lab5.Models
                 return null;
             }
 
-            if (expressionNode is IfNode ifNode)
+            if (expressionNode is IfNode ifNode && (ToExecute || Default))
             {
                 var condition = ExecuteNode(ifNode.Condition) as bool?;
 
                 if (condition == true)
                 {
-                    ExecuteNode(ifNode.Body);
+                    return ExecuteNode(ifNode.Body);
                 }
                 else
                 {
-                    ExecuteNode(ifNode.ElseBody);
+                    return ExecuteNode(ifNode.ElseBody);
                 }
 
                 return null;
             }
 
-            if (expressionNode is CoutNode coutNode)
+            if (expressionNode is CoutNode coutNode && (ToExecute || Default))
             {
                 foreach (var parameter in coutNode.Parameters)
                 {
@@ -215,7 +223,7 @@ namespace Lab5.Models
                 return null;
             }
 
-            if (expressionNode is CinNode cinNode)
+            if (expressionNode is CinNode cinNode && (ToExecute || Default))
             {
                 foreach (var parameter in cinNode.Parameters)
                 {
@@ -309,7 +317,7 @@ namespace Lab5.Models
                 return null;
             }
 
-            if (expressionNode is ForNode forNode)
+            if (expressionNode is ForNode forNode && (ToExecute || Default))
             {
                 Level++;
                 Name++;
@@ -374,7 +382,7 @@ namespace Lab5.Models
                 return null;
             }
 
-            if (expressionNode is FunctionExecutionNode functionExecutionNode)
+            if (expressionNode is FunctionExecutionNode functionExecutionNode && (ToExecute || Default))
             {
                 var level = Level;
                 var name = Name;
@@ -408,12 +416,49 @@ namespace Lab5.Models
 
             if (expressionNode is SwitchNode switchNode)
             {
+                var block = GetBlock();
+
+                while (block != "-1")
+                {
+                    if (VariablesTables[block].ContainsKey(switchNode.Variable.Identifier))
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        block = block.Remove(block.Length - 2);
+
+                        var temp = block.Split(':');
+                        temp[0] = (int.Parse(temp[0]) - 1).ToString();
+                        block = string.Empty;
+                        block += temp[0];
+
+                        for (var i = 1; i < temp.Length; i++)
+                        {
+                            block += $":{temp[i]}";
+                        }
+                    }
+                }
+
+                SwitchValue = VariablesTables[block][switchNode.Variable.Identifier];
+                ExecuteNode(switchNode.Body);
+                ToExecute = true;
+                Default = false;
+                Switched = false;
 
                 return null;
             }
 
             if (expressionNode is CaseNode caseNode)
             {
+                ToExecute = false;
+
+                if (caseNode.Literal.Identifier.Replace("\'", "") == SwitchValue.ToString())
+                {
+                    ToExecute = true;
+                    Switched = true;
+                }
+
                 return null;
             }
 
@@ -423,12 +468,23 @@ namespace Lab5.Models
                 {
                     case "endl":
                         return "\n";
+                    case "default":
+                        if (Switched)
+                        {
+                            ToExecute = false;
+                        }
+                        else
+                        {
+                            Default = true;
+                        }
+
+                        return null;
                 }
 
                 return null;
             }
 
-            if (expressionNode is BinaryOperationNode binaryOperationNode)
+            if (expressionNode is BinaryOperationNode binaryOperationNode && (ToExecute || Default))
             {
                 switch (binaryOperationNode.Operator.Identifier)
                 {
@@ -489,7 +545,7 @@ namespace Lab5.Models
                                 }
                             }
 
-                            var type3 = Semantic.GetReturnType(binaryOperation.LeftNode);
+                            var type3 = Semantic.GetReturnType(binaryOperation.LeftNode).Replace("*", "");
 
                             if (type3 == "int")
                             {
@@ -781,7 +837,7 @@ namespace Lab5.Models
                 return null;
             }
 
-            if (expressionNode is UnaryOperationNode unaryOperationNode)
+            if (expressionNode is UnaryOperationNode unaryOperationNode && (ToExecute || Default))
             {
                 if (unaryOperationNode.Operator.Identifier == "++")
                 {
@@ -834,7 +890,8 @@ namespace Lab5.Models
                 {
                     "int literal" => int.Parse(literalNode.Literal.Identifier),
                     "double literal" => double.Parse(literalNode.Literal.Identifier),
-                    "char literal" => char.Parse(literalNode.Literal.Identifier),
+                    "char literal" => char.Parse(literalNode.Literal.Identifier.Replace("\'", "")),
+                    "bool literal" => bool.Parse(literalNode.Literal.Identifier),
                     _ => literalNode.Literal.Identifier,
                 };
             }
