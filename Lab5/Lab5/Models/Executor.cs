@@ -19,6 +19,7 @@ namespace Lab5.Models
         private bool ToExecute { get; set; }
         private bool Default { get; set; }
         private bool Switched { get; set; }
+        private bool Break { get; set; }
 
         public Executor(ExpressionNode root, Dictionary<string, Dictionary<string, string>> variablesTables, Semantic semantic)
         {
@@ -44,6 +45,7 @@ namespace Lab5.Models
             ToExecute = true;
             Default = false;
             Switched = false;
+            Break = false;
         }
 
         public void ExecuteCode()
@@ -84,7 +86,10 @@ namespace Lab5.Models
 
                 foreach (var elem in node.Nodes)
                 {
-                    ExecuteNode(elem);
+                    if (!Break)
+                    {
+                        ExecuteNode(elem);
+                    }
                 }
 
                 Level--;
@@ -194,16 +199,18 @@ namespace Lab5.Models
             {
                 var condition = ExecuteNode(ifNode.Condition) as bool?;
 
+                object? result;
+
                 if (condition == true)
                 {
-                    return ExecuteNode(ifNode.Body);
+                    result = ExecuteNode(ifNode.Body);
                 }
                 else
                 {
-                    return ExecuteNode(ifNode.ElseBody);
+                    result = ExecuteNode(ifNode.ElseBody);
                 }
 
-                return null;
+                return result;
             }
 
             if (expressionNode is CoutNode coutNode && (ToExecute || Default))
@@ -342,7 +349,7 @@ namespace Lab5.Models
 
                     if (condition != null)
                     {
-                        if (condition == false)
+                        if (condition == false || Break)
                         {
                             Level--;
 
@@ -358,6 +365,7 @@ namespace Lab5.Models
                                 Block += $":{temp2[i]}";
                             }
 
+                            Break = false;
                             break;
                         }
                     }
@@ -468,6 +476,9 @@ namespace Lab5.Models
                 {
                     case "endl":
                         return "\n";
+                    case "break":
+                        Break = true;
+                        break;
                     case "default":
                         if (Switched)
                         {
@@ -950,7 +961,7 @@ namespace Lab5.Models
             return string.Empty;
         }
 
-        private void RunNode(ExpressionNode expressionNode)
+        private void RunNode(ExpressionNode? expressionNode)
         {
             if (expressionNode == null)
             {
@@ -1002,6 +1013,7 @@ namespace Lab5.Models
             if (expressionNode is IfNode ifNode)
             {
                 RunNode(ifNode.Body);
+                RunNode(ifNode.ElseBody);
             }
 
             if (expressionNode is WhileNode whileNode)

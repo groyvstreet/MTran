@@ -9,7 +9,7 @@ namespace Lab5
     {
         static void Main(string[] args)
         {
-            var path = "Program2.cpp";
+            var path = "Program1.cpp";
 
             using var reader = new StreamReader(path!);
             string codeText = reader.ReadToEnd();
